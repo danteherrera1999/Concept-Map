@@ -1,0 +1,9 @@
+.edge{
+    fill: black;
+}
+.edge_svg{
+    position: absolute;
+}
+.edge:hover{
+    fill: orange;
+}
