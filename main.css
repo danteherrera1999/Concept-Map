@@ -86,3 +86,14 @@
 #svg:hover{
     border:5px solid red;
 }
+.edge{
+    fill: black;
+    z-index: 99;
+}
+.edge_svg{
+    position: absolute;
+    z-index: 0;
+}
+.edge:hover{
+    fill: orange;
+}
