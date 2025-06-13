@@ -26,7 +26,6 @@ class rightClickMenu {
     this.x = e.clientX;
     this.y = e.clientY;
     this.targetNodeId = NodeId;
-    console.log(NodeId);
   }
   close() {
     this.element.style.display = "None";
@@ -35,41 +34,43 @@ class rightClickMenu {
 
 class Edge {
   constructor(p1, p2) {
-    this.element = document.createElementNS(svgNS, "svg")
     this.path = document.createElementNS(svgNS, "path")
-    this.element.appendChild(this.path);
-    this.element.classList.add("edge_svg")
     this.path.classList.add("edge");
-    //M 0 0 Q 0 50, 30 50 Q 60 50, 60 100
-    this.getCurveParams(p1, p2);
-    this.buildCurve()
+    this.path.addEventListener("contextmenu",this.handleRightClick);
+    this.rebuildCurve(p1,p2);
   }
   buildCurve() {
     const w = this.width;
     const h = this.height;
-    const d = (this.p_top[0] > this.p_bot[0]) ? (
-      `M 0 0 Q 0 ${lw + (h - lw) / 2}, ${(w - lw) / 2} ${lw + (h - lw) / 2} Q ${w - lw} ${lw + (h - lw) / 2}, ${w - lw} ${h}
-      H ${w} Q ${w} ${(h - lw) / 2}, ${(w - lw) / 2 + lw} ${(h - lw) / 2} Q ${lw} ${(h - lw) / 2}, ${lw} ${0} z`
+    const l = Math.min(this.p_bot[0],this.p_top[0]);
+    const t = Math.min(this.p_bot[1],this.p_top[1]);
+    const d = (this.p_top[0] < this.p_bot[0]) ? (
+      `M ${l} ${t} Q ${l} ${t+lw + (h - lw) / 2}, ${l+(w - lw) / 2} ${t+lw + (h - lw) / 2} Q ${l+w - lw} ${t+lw + (h - lw) / 2}, ${l+w - lw} ${t+h}
+      H ${l+w} Q ${l+w} ${t+(h - lw) / 2}, ${l+(w - lw) / 2 + lw} ${t+(h - lw) / 2} Q ${l+lw} ${t+(h - lw) / 2}, ${l+lw} ${t} z`
     ) :
       (
-        `M ${w} 0 Q ${w} ${lw + (h - lw) / 2}, ${lw + (w - lw) / 2} ${lw + (h - lw) / 2} Q ${lw} ${lw + (h - lw) / 2}, ${lw} ${h}
-      H 0 Q 0 ${(h - lw) / 2}, ${(w - lw) / 2} ${(h - lw) / 2} Q ${w - lw} ${(h - lw) / 2}, ${w - lw} ${0} z`
-      )
+        `M ${l+w} ${t} Q ${l+w} ${t+lw + (h - lw) / 2}, ${l+lw + (w - lw) / 2} ${t+lw + (h - lw) / 2} Q ${l+lw} ${t+lw + (h - lw) / 2}, ${l+lw} ${t+h}
+      H ${l} Q ${l} ${t+(h - lw) / 2}, ${l+(w - lw) / 2} ${t+(h - lw) / 2} Q ${l+w - lw} ${t+(h - lw) / 2}, ${l+w - lw} ${t} z`
+    )
     this.path.setAttribute("d", d)
   }
   getCurveParams(p1, p2) {
-    this.p_top = p1[1] > p2[1] ? p1 : p2;
-    this.p_bot = p1[1] <= p2[1] ? p1 : p2;
-    this.width = Math.abs(p2[0] - p1[0]);
-    this.height = Math.abs(p2[1] - p1[1]);
-    this.element.setAttribute("width", this.width);
-    this.element.setAttribute("height", this.height);
-    this.element.style.top = `${this.p_bot[1]}px`;
-    this.element.style.left = `${Math.min(p1[0], p2[0])}px`;
+    this.p_bot = p1[1] > p2[1] ? [...p1] : [...p2];
+    this.p_top = p1[1] > p2[1] ? [...p2] : [...p1];
+    this.p_bot[0] += (this.p_bot[0]>= this.p_top[0])? 8 : 3;
+    this.p_top[0] += (this.p_bot[0]>= this.p_top[0])? 3 : 8;
+    this.width = Math.abs(this.p_bot[0] - this.p_top[0]);
+    this.height = Math.abs(this.p_bot[1] - this.p_top[1]);
   }
   rebuildCurve(p1, p2) {
-    this.getCurveParams(p1, p2);
+    this.getCurveParams([...p1], [...p2]);
     this.buildCurve();
+  }
+  handleRightClick = e =>{
+    e.preventDefault();
+    e.stopPropagation();
+    this.path.remove();
+    nodeBox.removeEdgeByPath(this);
   }
 }
 
@@ -95,7 +96,7 @@ class Node {
     this.TopEbox.classList.add("nodeEbox");
     this.BotEbox.classList.add("nodeEbox");
     this.TopEbox.addEventListener("mousedown", (e) => { e.stopPropagation(); e.preventDefault(); this.handleEboxClick(e, "top") })
-    this.BotEbox.addEventListener("mousedown", (e) => { e.stopPropagation(); e.preventDefault(); this.handleEboxClick(e, "bot") })
+    this.BotEbox.addEventListener("mousedown", (e) => { e.stopPropagation(); e.preventDefault(); this.handleEboxClick(e, "low") })
     this.TopEbox.addEventListener("mouseup", (e) => { this.checkNewEdge(e, "top") });
     this.BotEbox.addEventListener("mouseup", (e) => { this.checkNewEdge(e, "bot") });
     this.TopEbox.style.top = 0;
@@ -114,10 +115,11 @@ class Node {
     this.y = y;
     this.element.style.top = `${this.y - Math.round(this.height / 2)}px`
     this.element.style.left = `${this.x - Math.round(this.width / 2)}px`
+    nodeBox.checkNodeEdges(this.id);
   }
   setPositionFromEvent = e => {
     this.setPosition(e.clientX, e.clientY);
-    nodeBox.checkNodeEdges(this.id);
+
   }
   moveNodePosition(dx, dy) {
     this.setPosition(this.x + dx, this.y + dy)
@@ -127,14 +129,14 @@ class Node {
   }
   handleEboxClick(e, eBoxType) {
     nodeBox.originEbox = { type: eBoxType, NodeId: this.id };
-    this.tempEdgeOrigin = [e.clientX, e.clientY];
+    this.tempEdgeOrigin = this.getEboxPosition(eBoxType);
     this.tempEdge = new Edge(this.tempEdgeOrigin, this.tempEdgeOrigin);
-    nodeBox.element.appendChild(this.tempEdge.element);
+    nodeBox.edgeBox.appendChild(this.tempEdge.path);
     document.addEventListener("mousemove", this.handleEdgeMove);
-    document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleEdgeMove); this.tempEdge.element.remove() }, { once: true })
+    document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleEdgeMove); this.tempEdge.path.remove() }, { once: true })
   }
   handleEdgeMove = e => {
-    this.tempEdge.rebuildCurve(this.tempEdgeOrigin, [e.clientX, e.clientY])
+    this.tempEdge.rebuildCurve(this.tempEdgeOrigin, [e.clientX-10, e.clientY])
   }
   checkNewEdge(e, type) {
     if (nodeBox.originEbox != null) {
@@ -145,13 +147,14 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    return (type == 'high') ? [this.x - this.width / 2 + 8, this.y - this.height / 2] : [this.x - this.width / 2 + 3, this.y + this.height / 2];
+    return (type == 'top') ? [this.x - this.width /2, this.y - this.height / 2] : [this.x - this.width / 2, this.y + this.height / 2];
   }
 }
 
 class NodeBox {
   constructor() {
     this.element = document.getElementById("nodeBox");
+    this.edgeBox = document.getElementById("edgeBox");
     this.nodes = [];
     this.edges = [];
     this.panOriginX = 0;
@@ -184,26 +187,29 @@ class NodeBox {
   }
   getNodeById = (nid) => this.nodes.filter((node) => node.id == nid)[0];
   addEdge(lid, hid) {
-    const p1 = this.getNodeById(lid).getEboxPosition('high');
-    const p2 = this.getNodeById(hid).getEboxPosition('low');
+    const p1 = this.getNodeById(lid).getEboxPosition("top");
+    const p2 = this.getNodeById(hid).getEboxPosition('bot');
     const newEdge = new Edge(p1, p2);
-    this.element.appendChild(newEdge.element);
+    nodeBox.edgeBox.appendChild(newEdge.path);
     this.edges.push({ lid: lid, hid: hid, edge: newEdge });
   }
   checkNodeEdges(nid) {
     this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => this.refreshEdge(edge))
   }
   refreshEdge(edge) {
-    const p1 = this.getNodeById(edge.lid).getEboxPosition('high');
-    const p2 = this.getNodeById(edge.hid).getEboxPosition('low');
+    const p1 = this.getNodeById(edge.lid).getEboxPosition('top');
+    const p2 = this.getNodeById(edge.hid).getEboxPosition('bot');
     edge.edge.rebuildCurve(p1, p2);
   }
   refreshAllEdges() {
     this.edges.forEach((edge) => this.refreshEdge(edge));
   }
   removeEdgesById(nid) {
-    this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => { edge.edge.element.remove() })
+    this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => { edge.edge.path.remove() })
     this.edges = this.edges.filter((edge) => (edge.lid != nid && edge.hid != nid));
+  }
+  removeEdgeByPath(path){
+    this.edges = this.edges.filter((edge)=>edge.edge!=path);
   }
 }
 
