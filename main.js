@@ -88,7 +88,14 @@ class Node {
     this.element.addEventListener("mousedown", this.handleClick, false);
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
+    this.openNodeMenu = true;
     this.creatEboxes();
+    this.nodeData = {
+      name : null,
+      description: null,
+      tags : [],
+      preconnects: []
+    }
   }
   creatEboxes() {
     this.TopEbox = document.createElement("div");
@@ -106,7 +113,14 @@ class Node {
   }
   handleClick = e => {
     document.addEventListener("mousemove", this.setPositionFromEvent);
-    document.addEventListener("mouseup", (e) => { document.removeEventListener("mousemove", this.setPositionFromEvent) }, { once: true });
+    document.addEventListener("mousemove",()=>{this.openNodeMenu=false},{once: true})
+    document.addEventListener("mouseup", (e) => { 
+      document.removeEventListener("mousemove", this.setPositionFromEvent) 
+      if (this.openNodeMenu){
+        console.log(`NODE: ${this.id}`)
+      }
+      this.openNodeMenu = true;
+    }, { once: true });
     e.preventDefault();
     e.stopPropagation();
   }

@@ -92,3 +92,20 @@
 .edge:hover{
     fill: orange;
 }
+#nodeMenu{
+    width: 100vw;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.11);;
+}
+#nodeInputMenu{
+    position: absolute;
+    background-color: grey;
+    width: 50vw;
+    left: 25vw;
+    top: 10vh;
+    height: 80vh;
+    border-radius: 2%;
+}
