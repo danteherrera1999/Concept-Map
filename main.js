@@ -112,6 +112,7 @@ class Node {
     this.element.appendChild(this.BotEbox);
   }
   handleClick = e => {
+    this.openNodeMenu = true;
     document.addEventListener("mousemove", this.setPositionFromEvent);
     document.addEventListener("mousemove",()=>{this.openNodeMenu=false},{once: true})
     document.addEventListener("mouseup", (e) => { 
@@ -119,7 +120,6 @@ class Node {
       if (this.openNodeMenu){
         console.log(`NODE: ${this.id}`)
       }
-      this.openNodeMenu = true;
     }, { once: true });
     e.preventDefault();
     e.stopPropagation();
