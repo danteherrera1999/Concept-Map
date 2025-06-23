@@ -91,10 +91,11 @@ class Node {
     this.openNodeMenu = true;
     this.creatEboxes();
     this.nodeData = {
-      name : null,
-      description: null,
-      tags : [],
-      preconnects: []
+      'id':this.id,
+      'name' : null,
+      'description': null,
+      'tags' : [],
+      'connections': []
     }
   }
   creatEboxes() {
@@ -118,7 +119,7 @@ class Node {
     document.addEventListener("mouseup", (e) => { 
       document.removeEventListener("mousemove", this.setPositionFromEvent) 
       if (this.openNodeMenu){
-        console.log(`NODE: ${this.id}`)
+        nodeInputMenu.populate(this.nodeData);
       }
     }, { once: true });
     e.preventDefault();
@@ -162,6 +163,12 @@ class Node {
   }
   getEboxPosition(type) {
     return (type == 'top') ? [this.x - this.width /2, this.y - this.height / 2] : [this.x - this.width / 2, this.y + this.height / 2];
+  }
+  setNodeData(nodeData){
+    if (true){
+      this.nodeData=nodeData;
+      console.log(`New Node Data: ${this.nodeData}`)
+    }
   }
 }
 
@@ -227,10 +234,80 @@ class NodeBox {
   }
 }
 
+class InputMenu{
+  constructor(element){
+    this.element = element;
+    this.element.style.display="none";
+    this.fields = {'id':document.getElementById("idInputField"),
+      'name':document.getElementById("nameInputField"),
+      'description':document.getElementById("descriptionInputField"),
+      'tags':document.getElementById("tagsInputField"),
+      'connections':document.getElementById("connectionsInputField"),
+    }
+    this.fields['tags'].children[0].addEventListener("keydown",this.handleTagInput)
+    this.tagBox = document.getElementById("tagBox")
+    document.getElementById("nodeSubmitButton").addEventListener("click",this.handleSubmit);
+  }
+  handleSubmit = e =>{
+    this.element.style.display="none";
+    this.setNodeData(this.getMenuData())
+  }
+  handleTagInput = e =>{
+    if (e.key === 'Enter'){
+      const tagText = this.fields['tags'].children[0].value;
+      this.fields['tags'].children[0].value = '';
+      this.createNewTag(tagText);
+    }
+  }
+  createNewTag(tagText){
+    const newTag = document.createElement("div");
+    newTag.classList.add("tag")
+    newTag.appendChild(document.createElement("p"));
+    newTag.appendChild(document.createElement("img"));
+    newTag.children[0].innerHTML=tagText;
+    newTag.children[1].setAttribute("src","x.png")
+    newTag.children[1].addEventListener("click",()=>{this.deleteTag(newTag)});
+    this.fields["tags"].children[1].appendChild(newTag);
+  }
+  deleteTag(tagToRemove){
+    [...this.tagBox.children].forEach((tag)=>{
+      if(tag == tagToRemove){
+        tag.remove();
+      }
+    })
+  }
+  populate(nodeData){
+    console.log(nodeData);
+    [...this.tagBox.children].forEach((tag)=>tag.remove())
+    this.fields['id'].innerHTML=nodeData['id'];
+    this.fields['name'].value=nodeData['name'];
+    this.fields['description'].value=nodeData['description'];
+    this.fields['connections'].innerHTML=nodeData['connections'];
+    this.element.style.display="block";
+    nodeData['tags'].forEach((tagText)=>this.createNewTag(tagText));
+  }
+  getTagTexts(){
+    return [...this.tagBox.children].map((tag)=>tag.children[0].innerHTML)
+  }
+  getMenuData(){
+    const tempNodeData = {'id':this.fields['id'].innerHTML,
+      'name':this.fields['name'].value,
+      'description':this.fields['description'].value,
+      'tags':this.getTagTexts(),
+      'connections':this.fields['connections'].innerHTML
+    }
+    return tempNodeData
+  }
+  setNodeData(nodeData){
+    console.log(nodeData)
+    nodeBox.getNodeById(nodeData['id']).setNodeData(nodeData);
+  }
+}
+
 const nodeBox = new NodeBox();
 const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
 const defaultNodeSize = 60;
-
+const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
 document.addEventListener("click", (e) => { rcMenu.close()})
 
 if (document.addEventListener) {

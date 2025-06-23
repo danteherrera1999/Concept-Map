@@ -13,7 +13,14 @@
             <ul>Delete Element</ul>
         </menu>
         <div id="nodeMenu">
-            <div id="nodeInputMenu"></div>
+            <div id="nodeInputMenu">
+                <div><h2>Node</h2><h2 id="idInputField">PH</h2></div>
+                <div><h2>Name</h2><input id="nameInputField" type="text"></div>
+                <div><h2>Description</h2><input id="descriptionInputField" type="text"/></div>
+                <div><h2>Tags</h2><div id="tagsInputField"><input type="text"/><div id="tagBox"></div></div></div>
+                <div><h2>Connected Nodes</h2><h2 id="connectionsInputField"></h2></div>
+                <button id="nodeSubmitButton">Submit</button>
+            </div>
         </div>
         <div id="nodeBox"><svg id="edgeBox"></svg></div>
     </body>
