@@ -77,26 +77,31 @@ class Edge {
 class Node {
   constructor(x, y, id) {
     this.id = id;
-    this.width = defaultNodeSize;
-    this.height = defaultNodeSize;
-    this.x = 0;
-    this.y = 0;
-    this.element = document.createElement('div');
-    this.element.setAttribute("style", `width:${this.width}px;height:${this.height}px`)
-    this.setPosition(x, y)
-    this.element.classList.add("node");
-    this.element.addEventListener("mousedown", this.handleClick, false);
-    nodeBox.element.appendChild(this.element);
-    this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
-    this.openNodeMenu = true;
-    this.creatEboxes();
     this.nodeData = {
       'id':this.id,
       'name' : null,
       'description': null,
       'tags' : [],
-      'connections': []
+      'connections': [],
+      'x':0,
+      'y':0,
     }
+    this.width = defaultNodeSize;
+    this.height = defaultNodeSize;
+    this.element = document.createElement('div');
+    this.element.setAttribute("style", `width:${this.width}px;height:${this.height}px`)
+    this.setPosition(x, y)
+    this.element.classList.add("node");
+    this.nameDisplay = document.createElement("p")
+    this.nameDisplay.classList.add("nodeName")
+    this.element.appendChild(this.nameDisplay)
+    this.element.addEventListener("mousedown", this.handleClick, false);
+    nodeBox.element.appendChild(this.element);
+    this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
+    this.openNodeMenu = true;
+    this.creatEboxes();
+    
+
   }
   creatEboxes() {
     this.TopEbox = document.createElement("div");
@@ -126,10 +131,10 @@ class Node {
     e.stopPropagation();
   }
   setPosition(x, y) {
-    this.x = x;
-    this.y = y;
-    this.element.style.top = `${this.y - Math.round(this.height / 2)}px`
-    this.element.style.left = `${this.x - Math.round(this.width / 2)}px`
+    this.nodeData.x = x;
+    this.nodeData.y = y;
+    this.element.style.top = `${this.nodeData.y - Math.round(this.height / 2)}px`
+    this.element.style.left = `${this.nodeData.x - Math.round(this.width / 2)}px`
     nodeBox.checkNodeEdges(this.id);
   }
   setPositionFromEvent = e => {
@@ -137,7 +142,7 @@ class Node {
 
   }
   moveNodePosition(dx, dy) {
-    this.setPosition(this.x + dx, this.y + dy)
+    this.setPosition(this.nodeData.x + dx, this.nodeData.y + dy)
   }
   setSize(width, height) {
 
@@ -162,11 +167,12 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    return (type == 'top') ? [this.x - this.width /2, this.y - this.height / 2] : [this.x - this.width / 2, this.y + this.height / 2];
+    return (type == 'top') ? [this.nodeData.x - this.width /2, this.nodeData.y - this.height / 2] : [this.nodeData.x - this.width / 2, this.nodeData.y + this.height / 2];
   }
   setNodeData(nodeData){
     if (true){
       this.nodeData=nodeData;
+      this.nameDisplay.innerHTML = nodeData.name;
       console.log(`New Node Data: ${this.nodeData}`)
     }
   }
@@ -278,6 +284,8 @@ class InputMenu{
   }
   populate(nodeData){
     console.log(nodeData);
+    this.element.style.left = `${nodeData.x + 50}px`;
+    this.element.style.top = `${nodeData.y - 250}px`;
     [...this.tagBox.children].forEach((tag)=>tag.remove())
     this.fields['id'].innerHTML=nodeData['id'];
     this.fields['name'].value=nodeData['name'];
@@ -290,12 +298,11 @@ class InputMenu{
     return [...this.tagBox.children].map((tag)=>tag.children[0].innerHTML)
   }
   getMenuData(){
-    const tempNodeData = {'id':this.fields['id'].innerHTML,
-      'name':this.fields['name'].value,
-      'description':this.fields['description'].value,
-      'tags':this.getTagTexts(),
-      'connections':this.fields['connections'].innerHTML
-    }
+    const tempNodeData = nodeBox.getNodeById(this.fields['id'].innerHTML).nodeData;
+    tempNodeData['name']=this.fields['name'].value;
+    tempNodeData['description']=this.fields['description'].value;
+    tempNodeData['tags']=this.getTagTexts();
+    tempNodeData['connections']=this.fields['connections'].innerHTML;
     return tempNodeData
   }
   setNodeData(nodeData){
