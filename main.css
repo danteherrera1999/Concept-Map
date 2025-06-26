@@ -141,7 +141,7 @@
     overflow-x: hidden;
 }
 .tag{
-    height:3em;
+    height:3rem;
     width: auto;
     border: 1px solid red;
     display: flex;
@@ -150,7 +150,7 @@
 }
 .tag > p {
     margin:0 5px;
-    font-size: 2em;
+    font-size: 2rem;
     left:0;
     width: min-content;
     white-space: nowrap;
@@ -167,6 +167,10 @@
     opacity: 1;
 }
 
+.nodeInputField{
+    z-index: 501;
+}
+
 #connectionsInputField{
     display: flex;
     flex-wrap: wrap;
@@ -178,13 +182,14 @@
 .connectionTag{
     border: 1px dashed red;
     display: flex;
-    font-size: 2em;
+    font-size: 2rem;
     left:0;
     width: min-content;
-    margin:0 5px;
+    margin:0;
+    padding: 0 5px;
     white-space: nowrap;
     align-items: center;
-    height: 3em;
+    height: 3rem;
 }
 
 p{
