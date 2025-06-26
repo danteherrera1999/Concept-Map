@@ -30,6 +30,9 @@
     z-index: 1;
     display: flex;
     align-items: center;
+    width: min-content;
+    min-width: 60px;
+    height: 60px;
 }
 
 .node:hover{
@@ -150,6 +153,7 @@
     font-size: 2em;
     left:0;
     width: min-content;
+    white-space: nowrap;
     height: min-content;
 }
 .tag > img{
@@ -163,3 +167,26 @@
     opacity: 1;
 }
 
+#connectionsInputField{
+    display: flex;
+    flex-wrap: wrap;
+    overflow: scroll;
+    overflow-x: hidden;
+    overflow: scroll;
+    overflow-x: hidden;
+}
+.connectionTag{
+    border: 1px dashed red;
+    display: flex;
+    font-size: 2em;
+    left:0;
+    width: min-content;
+    margin:0 5px;
+    white-space: nowrap;
+    align-items: center;
+    height: 3em;
+}
+
+p{
+    font-family: eurostile;
+}

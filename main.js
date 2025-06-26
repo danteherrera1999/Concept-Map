@@ -69,7 +69,6 @@ class Edge {
   handleRightClick = e =>{
     e.preventDefault();
     e.stopPropagation();
-    this.path.remove();
     nodeBox.removeEdgeByPath(this);
   }
 }
@@ -89,7 +88,6 @@ class Node {
     this.width = defaultNodeSize;
     this.height = defaultNodeSize;
     this.element = document.createElement('div');
-    this.element.setAttribute("style", `width:${this.width}px;height:${this.height}px`)
     this.setPosition(x, y)
     this.element.classList.add("node");
     this.nameDisplay = document.createElement("p")
@@ -99,11 +97,9 @@ class Node {
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
     this.openNodeMenu = true;
-    this.creatEboxes();
-    
-
+    this.createEboxes();
   }
-  creatEboxes() {
+  createEboxes() {
     this.TopEbox = document.createElement("div");
     this.BotEbox = document.createElement("div");
     this.TopEbox.classList.add("nodeEbox");
@@ -118,17 +114,19 @@ class Node {
     this.element.appendChild(this.BotEbox);
   }
   handleClick = e => {
-    this.openNodeMenu = true;
-    document.addEventListener("mousemove", this.setPositionFromEvent);
-    document.addEventListener("mousemove",()=>{this.openNodeMenu=false},{once: true})
-    document.addEventListener("mouseup", (e) => { 
-      document.removeEventListener("mousemove", this.setPositionFromEvent) 
-      if (this.openNodeMenu){
-        nodeInputMenu.populate(this.nodeData);
+    if (e.button===0){
+      this.openNodeMenu = true;
+      document.addEventListener("mousemove", this.setPositionFromEvent);
+      document.addEventListener("mousemove",()=>{this.openNodeMenu=false},{once: true})
+      document.addEventListener("mouseup", (e) => { 
+        document.removeEventListener("mousemove", this.setPositionFromEvent) 
+        if (this.openNodeMenu){
+          nodeInputMenu.populate(this.nodeData);
+        }
+      }, { once: true });
+      e.preventDefault();
+      e.stopPropagation();
       }
-    }, { once: true });
-    e.preventDefault();
-    e.stopPropagation();
   }
   setPosition(x, y) {
     this.nodeData.x = x;
@@ -173,8 +171,10 @@ class Node {
     if (true){
       this.nodeData=nodeData;
       this.nameDisplay.innerHTML = nodeData.name;
-      console.log(`New Node Data: ${this.nodeData}`)
     }
+  }
+  removeConnection(nid){
+    this.nodeData.connections = this.nodeData.connections.filter((connection)=>connection != nid);
   }
 }
 
@@ -219,6 +219,7 @@ class NodeBox {
     const newEdge = new Edge(p1, p2);
     nodeBox.edgeBox.appendChild(newEdge.path);
     this.edges.push({ lid: lid, hid: hid, edge: newEdge });
+    this.getNodeById(hid).nodeData.connections.push(lid);
   }
   checkNodeEdges(nid) {
     this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => this.refreshEdge(edge))
@@ -232,11 +233,26 @@ class NodeBox {
     this.edges.forEach((edge) => this.refreshEdge(edge));
   }
   removeEdgesById(nid) {
-    this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => { edge.edge.path.remove() })
-    this.edges = this.edges.filter((edge) => (edge.lid != nid && edge.hid != nid));
+    this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => { this.removeEdgeByPath(edge.edge) })
   }
   removeEdgeByPath(path){
+    this.edges.forEach((edge)=>{
+      if (edge.edge == path){
+        this.getNodeById(edge.hid).removeConnection(edge.lid);
+      }
+    })
+    path.path.remove();
     this.edges = this.edges.filter((edge)=>edge.edge!=path);
+
+  }
+  validateNodeData(nodeData){
+    var isValid = true;
+    this.nodes.forEach((node)=>{
+      if (node.nodeData.id!=nodeData.id){
+        if (node.nodeData.name == nodeData.name){isValid=false}
+      }
+    })
+    return isValid
   }
 }
 
@@ -252,14 +268,17 @@ class InputMenu{
     }
     this.fields['tags'].children[0].addEventListener("keydown",this.handleTagInput)
     this.tagBox = document.getElementById("tagBox")
-    document.getElementById("nodeSubmitButton").addEventListener("click",this.handleSubmit);
   }
   handleSubmit = e =>{
-    this.element.style.display="none";
-    this.setNodeData(this.getMenuData())
+    const newMenuData = this.getMenuData();
+    if (nodeBox.validateNodeData(newMenuData)){
+      this.setNodeData(newMenuData);
+      this.element.style.display="none";
+    }
   }
   handleTagInput = e =>{
     if (e.key === 'Enter'){
+      e.preventDefault();
       const tagText = this.fields['tags'].children[0].value;
       this.fields['tags'].children[0].value = '';
       this.createNewTag(tagText);
@@ -275,6 +294,12 @@ class InputMenu{
     newTag.children[1].addEventListener("click",()=>{this.deleteTag(newTag)});
     this.fields["tags"].children[1].appendChild(newTag);
   }
+  createNewConnectionTag(cid){
+    const newConnectionTag = document.createElement("p");
+    newConnectionTag.classList.add("connectionTag")
+    newConnectionTag.innerHTML=nodeBox.getNodeById(cid).nodeData.name;
+    this.fields["connections"].appendChild(newConnectionTag);
+  }
   deleteTag(tagToRemove){
     [...this.tagBox.children].forEach((tag)=>{
       if(tag == tagToRemove){
@@ -283,16 +308,16 @@ class InputMenu{
     })
   }
   populate(nodeData){
-    console.log(nodeData);
     this.element.style.left = `${nodeData.x + 50}px`;
     this.element.style.top = `${nodeData.y - 250}px`;
-    [...this.tagBox.children].forEach((tag)=>tag.remove())
+    [...this.tagBox.children].forEach((tag)=>tag.remove());
+    [...this.fields.connections.children].forEach((connection)=>connection.remove());
     this.fields['id'].innerHTML=nodeData['id'];
     this.fields['name'].value=nodeData['name'];
     this.fields['description'].value=nodeData['description'];
-    this.fields['connections'].innerHTML=nodeData['connections'];
     this.element.style.display="block";
     nodeData['tags'].forEach((tagText)=>this.createNewTag(tagText));
+    nodeData['connections'].forEach((cid)=>this.createNewConnectionTag(cid));
   }
   getTagTexts(){
     return [...this.tagBox.children].map((tag)=>tag.children[0].innerHTML)
@@ -302,11 +327,9 @@ class InputMenu{
     tempNodeData['name']=this.fields['name'].value;
     tempNodeData['description']=this.fields['description'].value;
     tempNodeData['tags']=this.getTagTexts();
-    tempNodeData['connections']=this.fields['connections'].innerHTML;
     return tempNodeData
   }
   setNodeData(nodeData){
-    console.log(nodeData)
     nodeBox.getNodeById(nodeData['id']).setNodeData(nodeData);
   }
 }
@@ -316,6 +339,16 @@ const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
 const defaultNodeSize = 60;
 const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
 document.addEventListener("click", (e) => { rcMenu.close()})
+document.addEventListener("keypress",(e)=>{
+  if (e.key==='Enter'){
+    if (nodeInputMenu.element.style.display=='block'){nodeInputMenu.handleSubmit()}
+  }
+})
+document.addEventListener("keydown",(e)=>{
+  if (e.key==='Escape'){
+    if (nodeInputMenu.element.style.display=='block'){nodeInputMenu.element.style.display='none'}
+  }
+})
 
 if (document.addEventListener) {
   document.addEventListener('contextmenu', function (e) {
