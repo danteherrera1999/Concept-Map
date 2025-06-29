@@ -2,6 +2,7 @@
     position: absolute;
     height:100vh;
     width: 100vw;
+    overflow: hidden;
 }
 #rcMenu{
     height: 40px;
@@ -22,6 +23,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
+    overflow: hidden;
 }
 
 .node{
@@ -30,9 +32,7 @@
     z-index: 1;
     display: flex;
     align-items: center;
-    width: min-content;
-    min-width: 60px;
-    height: 60px;
+    cursor: pointer;
 }
 
 .node:hover{
@@ -54,8 +54,8 @@
     background-color: white;
     border-radius: 10%;
     border: 1px dashed black;
-    width: 10px;
-    height: 10px;
+    width: min(15%,10px);
+    height: min(15%,10px);
     left:0;
 }
 .nodeEbox:hover{
@@ -194,4 +194,38 @@
 
 p{
     font-family: eurostile;
+}
+
+#sideMenu{
+    z-index: 1000;
+    height:100vh;
+    width:50px;
+    position: fixed;
+    margin: 0;
+    background-color: grey;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    left: 0;
+    top:0;
+}
+#sideMenu > a{
+    width:100%;
+    height:5%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+}
+#sideMenu > a:hover{
+    background-color: rgb(162, 160, 160);
+}
+#sideMenu > a > h1{
+    font-family: eurostile;
+    font-size: 1em;
+}
+#importButton > input{
+    display: none;
 }

@@ -88,7 +88,7 @@ class Node {
     this.width = defaultNodeSize;
     this.height = defaultNodeSize;
     this.element = document.createElement('div');
-    this.setPosition(x, y)
+    this.setPosition(x/nodeBox.scaleFactor, y/nodeBox.scaleFactor)
     this.element.classList.add("node");
     this.nameDisplay = document.createElement("p")
     this.nameDisplay.classList.add("nodeName")
@@ -132,19 +132,22 @@ class Node {
   setPosition(x, y) {
     this.nodeData.x = x;
     this.nodeData.y = y;
-    this.element.style.top = `${this.nodeData.y - Math.round(this.height / 2)}px`
-    this.element.style.left = `${this.nodeData.x - Math.round(this.width / 2)}px`
+    this.setScale(nodeBox.scaleFactor);
     nodeBox.checkNodeEdges(this.id);
   }
   setPositionFromEvent = e => {
-    this.setPosition(e.clientX, e.clientY);
-
+    const sf = nodeBox.scaleFactor;
+    this.setPosition(e.clientX/sf, e.clientY/sf);
   }
   moveNodePosition(dx, dy) {
-    this.setPosition(this.nodeData.x + dx, this.nodeData.y + dy)
+    const sf = nodeBox.scaleFactor;
+    this.setPosition(this.nodeData.x+dx/sf,this.nodeData.y+dy/sf)
   }
-  setSize(width, height) {
-
+  setScale(sf) {
+    this.element.style.width = `${this.width*sf}px`;
+    this.element.style.height = `${this.height*sf}px`;
+    this.element.style.left = `${(this.nodeData.x-this.width/2)*sf}px`
+    this.element.style.top = `${(this.nodeData.y-this.height/2)*sf}px`
   }
   handleEboxClick(e, eBoxType) {
     nodeBox.originEbox = { type: eBoxType, NodeId: this.id };
@@ -166,12 +169,13 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    return (type == 'top') ? [this.nodeData.x - this.width / 2, this.nodeData.y - this.height / 2] : [this.nodeData.x - this.width / 2, this.nodeData.y + this.height / 2];
+    var eboxPositions = (type == 'top') ? [this.nodeData.x - this.width / 2, this.nodeData.y - this.height / 2] : [this.nodeData.x - this.width / 2, this.nodeData.y + this.height / 2];
+    return eboxPositions.map((x)=>x*nodeBox.scaleFactor);
   }
   setNodeData(nodeData) {
     if (true) {
       this.nodeData = nodeData;
-      this.nameDisplay.innerHTML = nodeData.name==''?`Node ${nodeData.id}`:nodeData.name;
+      this.nameDisplay.innerHTML = nodeData.name == '' ? `Node ${nodeData.id}` : nodeData.name;
     }
   }
   removeConnection(nid) {
@@ -189,6 +193,8 @@ class NodeBox {
     this.panOriginY = 0;
     this.element.addEventListener("mousedown", this.handleClick);
     this.originEbox = null;
+    this.scaleFactor = 1;
+    document.addEventListener("wheel",this.handleZoom)
     document.addEventListener("mouseup", (e) => { this.originEbox = null })
   }
   handleClick = e => {
@@ -206,21 +212,27 @@ class NodeBox {
     this.refreshAllEdges();
   }
   removeNodeById(id) {
+    this.removeEdgesById(id);
     this.nodes.forEach((node) => { if (node.id == id) { node.element.remove() } });
     this.nodes = this.nodes.filter((node) => node.id != id);
-    this.removeEdgesById(id);
   }
-  addNode(e, x, y) {
-    nodeBox.nodes.push(new Node(x, y, this.nodes.length == 0 ? 0 : 1 + Math.max(...this.nodes.map((node) => node.id))))
+  addNode(e, x, y, id = null) {
+    var newNodeId = id;
+    if (id == null) { newNodeId = this.nodes.length == 0 ? 0 : 1 + Math.max(...this.nodes.map((node) => node.id)) };
+    const newNode = new Node(x, y, newNodeId);
+    nodeBox.nodes.push(newNode);
+    return newNode;
   }
   getNodeById = (nid) => this.nodes.filter((node) => node.id == nid)[0];
-  addEdge(lid, hid) {
-    const p1 = this.getNodeById(lid).getEboxPosition("top");
-    const p2 = this.getNodeById(hid).getEboxPosition('bot');
-    const newEdge = new Edge(p1, p2);
-    nodeBox.edgeBox.appendChild(newEdge.path);
-    this.edges.push({ lid: lid, hid: hid, edge: newEdge });
-    this.getNodeById(hid).nodeData.connections.push(lid);
+  addEdge(lid, hid, addEdgeToNode = true) {
+    if (!addEdgeToNode || !(nodeBox.getNodeById(hid).nodeData.connections.includes(lid))) {
+      const p1 = this.getNodeById(lid).getEboxPosition("top");
+      const p2 = this.getNodeById(hid).getEboxPosition('bot');
+      const newEdge = new Edge(p1, p2);
+      nodeBox.edgeBox.appendChild(newEdge.path);
+      this.edges.push({ lid: lid, hid: hid, edge: newEdge });
+      if (addEdgeToNode) { this.getNodeById(hid).nodeData.connections.push(lid) };
+    }
   }
   checkNodeEdges(nid) {
     this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => this.refreshEdge(edge))
@@ -236,6 +248,12 @@ class NodeBox {
   removeEdgesById(nid) {
     this.edges.filter((edge) => (edge.lid == nid || edge.hid == nid)).forEach((edge) => { this.removeEdgeByPath(edge.edge) })
   }
+  removeAllNodes = e => {
+    this.nodes.forEach((node) => {
+      nodeBox.removeNodeById(node.id);
+    })
+  }
+
   removeEdgeByPath(path) {
     this.edges.forEach((edge) => {
       if (edge.edge == path) {
@@ -250,14 +268,94 @@ class NodeBox {
     var isValid = true;
     this.nodes.forEach((node) => {
       if (node.nodeData.id != nodeData.id) {
-        if (node.nodeData.name == nodeData.name && node.nodeData.name!='') { isValid = false }
+        if (node.nodeData.name == nodeData.name && node.nodeData.name != '') { isValid = false }
       }
     })
     return isValid
   }
   saveNodeData() {
-    const allNodeData = this.nodes.map((node) => node.nodeData);
-    console.log(allNodeData)
+    const saveData = {
+      'settings': {
+        'scaleFactor':this.scaleFactor,
+      },
+      'allNodeData': this.nodes.map((node) => node.nodeData)
+    };
+    localStorage.setItem('sessionData', JSON.stringify(saveData))
+    console.log(saveData);
+  }
+  loadAllData(sessionData) {
+    const newSessionData = JSON.parse(sessionData);
+    this.scaleFactor = newSessionData.settings.scaleFactor;
+    console.log(newSessionData);
+    this.removeAllNodes();
+    newSessionData.allNodeData.forEach((nodeData) => {
+      const newNode = this.addNode(null, nodeData.x, nodeData.y, nodeData.id);
+      newNode.setNodeData(nodeData);
+      newNode.setPosition(nodeData.x, nodeData.y);
+    })
+    this.nodes.forEach((node) => {
+      node.nodeData.connections.forEach((lid) => {
+        this.addEdge(lid, node.id, false);
+      })
+    })
+  }
+  setScale(sf){
+    this.nodes.forEach((node)=>{
+      node.setScale(sf);
+    })
+
+  }
+  handleZoom = e =>{
+    const zoomIn = e.deltaY < 0;
+    if ((zoomIn && this.scaleFactor<=1.95) || (!zoomIn && this.scaleFactor>=.5)){
+      const x_0 = e.clientX/this.scaleFactor;
+      const y_0 = e.clientY/this.scaleFactor;
+      this.scaleFactor += zoomIn? .1 : -.1;
+      const x_1 = e.clientX/this.scaleFactor;
+      const y_1 = e.clientY/this.scaleFactor;
+      var dx = x_1-x_0;
+      var dy = y_1-y_0;
+      this.nodes.forEach((node)=>{
+        node.moveNodePosition(dx*this.scaleFactor,dy*this.scaleFactor);
+      })
+    }
+  }
+  exportNodeData = e =>{
+    const now = new Date();
+    const jsonData = localStorage.getItem("sessionData");
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${now.getMinutes()}_${now.getHours()}_${now.getDate()}_${now.getFullYear()}.json`;
+    document.body.appendChild(a);
+    a.click()
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  validateSessionData(newSessionData){
+    return true
+  }
+  loadFromFile = e =>{
+    const fileList = e.target.files
+    if (fileList.length > 0){
+      const fileToLoad = fileList[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try{
+          const newSessionData = JSON.parse(e.target.result);
+          if (nodeBox.validateSessionData(newSessionData)){
+            nodeBox.loadAllData(JSON.stringify(newSessionData))
+          }
+        }
+        catch(err){
+          console.log(err)
+          alert("Failed To Load Data");
+        }
+      };
+      reader.readAsText(fileToLoad);
+    }
+    document.getElementById("fileInput").value='';
   }
 }
 
@@ -310,8 +408,7 @@ class InputMenu {
     const newConnectionTag = document.createElement("p");
     newConnectionTag.classList.add("connectionTag")
     const connectedNodeName = nodeBox.getNodeById(cid).nodeData.name
-    console.log(connectedNodeName)
-    newConnectionTag.innerHTML = connectedNodeName==''?`Node ${cid}`:connectedNodeName;
+    newConnectionTag.innerHTML = connectedNodeName == '' ? `Node ${cid}` : connectedNodeName;
     this.fields["connections"].appendChild(newConnectionTag);
   }
   deleteTag(tagToRemove) {
@@ -322,8 +419,8 @@ class InputMenu {
     })
   }
   populate(nodeData) {
-    this.left = nodeData.x + 50;
-    this.top = nodeData.y - 250;
+    this.left = nodeData.x*nodeBox.scaleFactor + 50;
+    this.top = nodeData.y*nodeBox.scaleFactor - 250;
     this.element.style.left = `${this.left}px`;
     this.element.style.top = `${this.top}px`;
     [...this.tagBox.children].forEach((tag) => tag.remove());
@@ -331,6 +428,7 @@ class InputMenu {
     this.fields['id'].innerHTML = nodeData['id'];
     this.fields['name'].value = nodeData['name'];
     this.fields['description'].value = nodeData['description'];
+    this.fields['tags'].children[0].value = '';
     this.element.style.display = "block";
     nodeData['tags'].forEach((tagText) => this.createNewTag(tagText));
     nodeData['connections'].forEach((cid) => this.createNewConnectionTag(cid));
@@ -370,6 +468,10 @@ const nodeBox = new NodeBox();
 const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
 const defaultNodeSize = 60;
 const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
+document.getElementById("importButton").addEventListener("click",()=>{document.getElementById("fileInput").click()})
+document.getElementById("fileInput").addEventListener("change",nodeBox.loadFromFile)
+document.getElementById("exportButton").addEventListener("click",nodeBox.exportNodeData);
+document.getElementById("deleteAllButton").addEventListener("click",nodeBox.removeAllNodes)
 document.addEventListener("click", (e) => { rcMenu.close() })
 document.addEventListener("keypress", (e) => {
   if (e.key === 'Enter') {
@@ -391,4 +493,9 @@ if (document.addEventListener) {
     rcMenu.open(e);
     e.preventDefault();
   }, false);
+}
+
+
+if (localStorage.getItem('sessionData') != null) {
+  nodeBox.loadAllData(localStorage.getItem('sessionData'));
 }
