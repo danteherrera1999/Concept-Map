@@ -1,5 +1,5 @@
 const svgNS = "http://www.w3.org/2000/svg";
-const lw = 5;
+const defaultLineWidth = 5;
 
 class rightClickMenu {
   constructor(element) {
@@ -44,6 +44,7 @@ class Edge {
     const h = this.height;
     const l = Math.min(this.p_bot[0], this.p_top[0]);
     const t = Math.min(this.p_bot[1], this.p_top[1]);
+    const lw = defaultLineWidth * nodeBox.scaleFactor;
     const d = (this.p_top[0] < this.p_bot[0]) ? (
       `M ${l} ${t} Q ${l} ${t + lw + (h - lw) / 2}, ${l + (w - lw) / 2} ${t + lw + (h - lw) / 2} Q ${l + w - lw} ${t + lw + (h - lw) / 2}, ${l + w - lw} ${t + h}
       H ${l + w} Q ${l + w} ${t + (h - lw) / 2}, ${l + (w - lw) / 2 + lw} ${t + (h - lw) / 2} Q ${l + lw} ${t + (h - lw) / 2}, ${l + lw} ${t} z`
@@ -55,10 +56,11 @@ class Edge {
     this.path.setAttribute("d", d)
   }
   getCurveParams(p1, p2) {
+    const sf = nodeBox.scaleFactor
     this.p_bot = p1[1] > p2[1] ? [...p1] : [...p2];
     this.p_top = p1[1] > p2[1] ? [...p2] : [...p1];
-    this.p_bot[0] += (this.p_bot[0] >= this.p_top[0]) ? 8 : 3;
-    this.p_top[0] += (this.p_bot[0] >= this.p_top[0]) ? 3 : 8;
+    this.p_bot[0] += (this.p_bot[0] >= this.p_top[0]) ? 8 * sf : 3 * sf;
+    this.p_top[0] += (this.p_bot[0] >= this.p_top[0]) ? 3 * sf: 8 * sf;
     this.width = Math.abs(this.p_bot[0] - this.p_top[0]);
     this.height = Math.abs(this.p_bot[1] - this.p_top[1]);
   }
@@ -88,7 +90,6 @@ class Node {
     this.width = defaultNodeSize;
     this.height = defaultNodeSize;
     this.element = document.createElement('div');
-    this.setPosition(x/nodeBox.scaleFactor, y/nodeBox.scaleFactor)
     this.element.classList.add("node");
     this.nameDisplay = document.createElement("p")
     this.nameDisplay.classList.add("nodeName")
@@ -98,6 +99,7 @@ class Node {
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
     this.openNodeMenu = true;
+    this.setPosition(x/nodeBox.scaleFactor, y/nodeBox.scaleFactor)
     this.createEboxes();
   }
   createEboxes() {
@@ -148,6 +150,7 @@ class Node {
     this.element.style.height = `${this.height*sf}px`;
     this.element.style.left = `${(this.nodeData.x-this.width/2)*sf}px`
     this.element.style.top = `${(this.nodeData.y-this.height/2)*sf}px`
+    this.nameDisplay.style.fontSize=`${16*sf}px`
   }
   handleEboxClick(e, eBoxType) {
     nodeBox.originEbox = { type: eBoxType, NodeId: this.id };
