@@ -1,3 +1,14 @@
+/*
+Features to implement:
+drag box relocating
+style filters
+"find node" option in rcm
+grid system
+style page
+MathJAX support
+fix edge positions on zooming
+*/
+
 const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
 
@@ -310,7 +321,7 @@ class NodeBox {
   }
   handleZoom = e =>{
     const zoomIn = e.deltaY < 0;
-    if ((zoomIn && this.scaleFactor<=1.95) || (!zoomIn && this.scaleFactor>=.5)){
+    if ((zoomIn && this.scaleFactor<=1.95) || (!zoomIn && this.scaleFactor>=.2)){
       const x_0 = e.clientX/this.scaleFactor;
       const y_0 = e.clientY/this.scaleFactor;
       this.scaleFactor += zoomIn? .1 : -.1;
