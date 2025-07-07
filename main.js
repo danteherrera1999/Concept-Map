@@ -1,13 +1,21 @@
 /*
 Features to implement:
-drag box relocating
+
+drag box relocating*
 style filters
 "find node" option in rcm
 grid system
 style page
-MathJAX support
+MathJAX support*
 fix edge positions on zooming
+add input field display and input layers
+add node resizing
+add input box resizing
+fix zooming breaking temp edge*
+latex rendering size bug on load.
 */
+
+
 
 const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
@@ -47,7 +55,7 @@ class Edge {
   constructor(p1, p2) {
     this.path = document.createElementNS(svgNS, "path")
     this.path.classList.add("edge");
-    this.path.addEventListener("contextmenu", this.handleRightClick);
+    this.path.addEventListener("mousedown", this.handleRightClick);
     this.rebuildCurve(p1, p2);
   }
   buildCurve() {
@@ -71,7 +79,7 @@ class Edge {
     this.p_bot = p1[1] > p2[1] ? [...p1] : [...p2];
     this.p_top = p1[1] > p2[1] ? [...p2] : [...p1];
     this.p_bot[0] += (this.p_bot[0] >= this.p_top[0]) ? 8 * sf : 3 * sf;
-    this.p_top[0] += (this.p_bot[0] >= this.p_top[0]) ? 3 * sf: 8 * sf;
+    this.p_top[0] += (this.p_bot[0] >= this.p_top[0]) ? 3 * sf : 8 * sf;
     this.width = Math.abs(this.p_bot[0] - this.p_top[0]);
     this.height = Math.abs(this.p_bot[1] - this.p_top[1]);
   }
@@ -80,9 +88,11 @@ class Edge {
     this.buildCurve();
   }
   handleRightClick = e => {
+    if (e.button === 2) {
+      nodeBox.removeEdgeByPath(this);
+    }
     e.preventDefault();
     e.stopPropagation();
-    nodeBox.removeEdgeByPath(this);
   }
 }
 
@@ -110,7 +120,7 @@ class Node {
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
     this.openNodeMenu = true;
-    this.setPosition(x/nodeBox.scaleFactor, y/nodeBox.scaleFactor)
+    this.setPosition(x / nodeBox.scaleFactor, y / nodeBox.scaleFactor)
     this.createEboxes();
   }
   createEboxes() {
@@ -130,17 +140,21 @@ class Node {
   handleClick = e => {
     if (e.button === 0) {
       this.openNodeMenu = true;
-      document.addEventListener("mousemove", this.setPositionFromEvent);
+      if (this.element.classList.contains("selectedNode")) {
+        nodeBox.panOriginX = e.clientX;
+        nodeBox.panOriginY = e.clientY;
+      }
+      document.addEventListener("mousemove", this.handleMouseMove);
       document.addEventListener("mousemove", () => { this.openNodeMenu = false }, { once: true })
       document.addEventListener("mouseup", (e) => {
-        document.removeEventListener("mousemove", this.setPositionFromEvent)
+        document.removeEventListener("mousemove", this.handleMouseMove)
         if (this.openNodeMenu) {
           nodeInputMenu.populate(this.nodeData);
         }
       }, { once: true });
-      e.preventDefault();
-      e.stopPropagation();
     }
+    e.preventDefault();
+    e.stopPropagation();
   }
   setPosition(x, y) {
     this.nodeData.x = x;
@@ -148,31 +162,39 @@ class Node {
     this.setScale(nodeBox.scaleFactor);
     nodeBox.checkNodeEdges(this.id);
   }
+  handleMouseMove = e => {
+    if (this.element.classList.contains("selectedNode")) {
+      nodeBox.panSelectedNodes(e);
+    }
+    else {
+      this.setPositionFromEvent(e);
+    }
+  }
   setPositionFromEvent = e => {
     const sf = nodeBox.scaleFactor;
-    this.setPosition(e.clientX/sf, e.clientY/sf);
+    this.setPosition(e.clientX / sf, e.clientY / sf);
   }
   moveNodePosition(dx, dy) {
     const sf = nodeBox.scaleFactor;
-    this.setPosition(this.nodeData.x+dx/sf,this.nodeData.y+dy/sf)
+    this.setPosition(this.nodeData.x + dx / sf, this.nodeData.y + dy / sf)
   }
   setScale(sf) {
-    this.element.style.width = `${this.width*sf}px`;
-    this.element.style.height = `${this.height*sf}px`;
-    this.element.style.left = `${(this.nodeData.x-this.width/2)*sf}px`
-    this.element.style.top = `${(this.nodeData.y-this.height/2)*sf}px`
-    this.nameDisplay.style.fontSize=`${16*sf}px`
+    this.element.style.width = `${this.width * sf}px`;
+    this.element.style.height = `${this.height * sf}px`;
+    this.element.style.left = `${(this.nodeData.x - this.width / 2) * sf}px`
+    this.element.style.top = `${(this.nodeData.y - this.height / 2) * sf}px`
+    this.nameDisplay.style.fontSize = `${16 * sf}px`
   }
   handleEboxClick(e, eBoxType) {
     nodeBox.originEbox = { type: eBoxType, NodeId: this.id };
-    this.tempEdgeOrigin = this.getEboxPosition(eBoxType);
-    this.tempEdge = new Edge(this.tempEdgeOrigin, this.tempEdgeOrigin);
+    this.tempEdgeType = eBoxType;
+    this.tempEdge = new Edge([0, 0], [0, 0]);
     nodeBox.edgeBox.appendChild(this.tempEdge.path);
-    document.addEventListener("mousemove", this.handleEdgeMove);
-    document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleEdgeMove); this.tempEdge.path.remove() }, { once: true })
+    ["mousemove", "wheel"].forEach((eventType) => { document.addEventListener(eventType, this.handleEdgeMove) });
+    document.addEventListener("mouseup", () => { ["mousemove", "wheel"].forEach((eventType) => document.removeEventListener(eventType, this.handleEdgeMove)); this.tempEdge.path.remove() }, { once: true })
   }
   handleEdgeMove = e => {
-    this.tempEdge.rebuildCurve(this.tempEdgeOrigin, [e.clientX - 10, e.clientY])
+    this.tempEdge.rebuildCurve(this.getEboxPosition(this.tempEdgeType), [e.clientX - 10, e.clientY])
   }
   checkNewEdge(e, type) {
     if (nodeBox.originEbox != null) {
@@ -184,12 +206,13 @@ class Node {
   }
   getEboxPosition(type) {
     var eboxPositions = (type == 'top') ? [this.nodeData.x - this.width / 2, this.nodeData.y - this.height / 2] : [this.nodeData.x - this.width / 2, this.nodeData.y + this.height / 2];
-    return eboxPositions.map((x)=>x*nodeBox.scaleFactor);
+    return eboxPositions.map((x) => x * nodeBox.scaleFactor);
   }
   setNodeData(nodeData) {
     if (true) {
       this.nodeData = nodeData;
       this.nameDisplay.innerHTML = nodeData.name == '' ? `Node ${nodeData.id}` : nodeData.name;
+      MathJax.typeset([this.nameDisplay]);
     }
   }
   removeConnection(nid) {
@@ -201,6 +224,7 @@ class NodeBox {
   constructor() {
     this.element = document.getElementById("nodeBox");
     this.edgeBox = document.getElementById("edgeBox");
+    this.gridElement = document.getElementById("gridElement");
     this.nodes = [];
     this.edges = [];
     this.panOriginX = 0;
@@ -208,19 +232,72 @@ class NodeBox {
     this.element.addEventListener("mousedown", this.handleClick);
     this.originEbox = null;
     this.scaleFactor = 1;
-    document.addEventListener("wheel",this.handleZoom)
-    document.addEventListener("mouseup", (e) => { this.originEbox = null })
+    this.selectionBox = document.getElementById("selectionBox");
+    this.selectedNodes = [];
+    document.addEventListener("wheel", this.handleZoom)
+    document.addEventListener("mouseup", () => { this.originEbox = null })
   }
   handleClick = e => {
     if (e.button === 0) {
+      if (nodeInputMenu.element.style.display == "block") {
+        nodeInputMenu.element.style.display = "none";
+      }
       this.panOriginX = e.clientX;
       this.panOriginY = e.clientY;
       document.addEventListener("mousemove", this.panNodes);
-      document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.panNodes) }, { once: true })
+      document.addEventListener("mouseup", () => {
+        document.removeEventListener("mousemove", this.panNodes);
+      }, { once: true })
     }
+    else if (e.button === 2) {
+      this.selectionOrigin = [e.clientX, e.clientY];
+      this.selectionBox.style.width = `0px`;
+      this.selectionBox.style.height = `0px`;
+      document.addEventListener("mousemove", this.handleRightDrag);
+      document.addEventListener("mouseup", this.handleSelection, { once: true });
+    }
+  }
+  handleRightDrag = e => {
+    this.selectionBox.style.display = 'block';
+    this.selectionBox.style.width = `${Math.abs(e.clientX - this.selectionOrigin[0])}px`;
+    this.selectionBox.style.height = `${Math.abs(e.clientY - this.selectionOrigin[1])}px`;
+    this.selectionBox.style.top = this.selectionOrigin[1] > e.clientY ? `${e.clientY}px` : `${this.selectionOrigin[1]}px`;
+    this.selectionBox.style.left = this.selectionOrigin[0] > e.clientX ? `${e.clientX}px` : `${this.selectionOrigin[0]}px`;
+  }
+  handleSelection = e => {
+    if (this.selectionBox.style.width == `0px`) {
+      rcMenu.open(e);
+    }
+    else {
+      //get all nodes in box;
+      this.clearSelectedNodes();
+      const xmin = Math.min(e.clientX, this.selectionOrigin[0]);
+      const xmax = Math.max(e.clientX, this.selectionOrigin[0]);
+      const ymin = Math.min(e.clientY, this.selectionOrigin[1]);
+      const ymax = Math.max(e.clientY, this.selectionOrigin[1]);
+      this.selectedNodes = this.nodes.filter((node) =>
+        node.nodeData.x * this.scaleFactor > xmin && node.nodeData.x * this.scaleFactor <= xmax && node.nodeData.y * this.scaleFactor > ymin && node.nodeData.y * this.scaleFactor < ymax
+      );
+      this.selectedNodes.forEach((node) => { node.element.classList.add("selectedNode") })
+    }
+
+    this.selectionBox.style.display = 'none';
+    document.removeEventListener("mousemove", this.handleRightDrag);
+  }
+  clearSelectedNodes = e => {
+    this.selectedNodes.forEach((node) => {
+      node.element.classList.remove("selectedNode");
+    })
+    this.selectedNodes = [];
   }
   panNodes = e => {
     this.nodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
+    this.panOriginX = e.clientX;
+    this.panOriginY = e.clientY;
+    this.refreshAllEdges();
+  }
+  panSelectedNodes = e => {
+    this.selectedNodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
     this.panOriginX = e.clientX;
     this.panOriginY = e.clientY;
     this.refreshAllEdges();
@@ -290,7 +367,7 @@ class NodeBox {
   saveNodeData() {
     const saveData = {
       'settings': {
-        'scaleFactor':this.scaleFactor,
+        'scaleFactor': this.scaleFactor,
       },
       'allNodeData': this.nodes.map((node) => node.nodeData)
     };
@@ -313,28 +390,29 @@ class NodeBox {
       })
     })
   }
-  setScale(sf){
-    this.nodes.forEach((node)=>{
+  setScale(sf) {
+    this.nodes.forEach((node) => {
       node.setScale(sf);
     })
 
   }
-  handleZoom = e =>{
+  handleZoom = e => {
     const zoomIn = e.deltaY < 0;
-    if ((zoomIn && this.scaleFactor<=1.95) || (!zoomIn && this.scaleFactor>=.2)){
-      const x_0 = e.clientX/this.scaleFactor;
-      const y_0 = e.clientY/this.scaleFactor;
-      this.scaleFactor += zoomIn? .1 : -.1;
-      const x_1 = e.clientX/this.scaleFactor;
-      const y_1 = e.clientY/this.scaleFactor;
-      var dx = x_1-x_0;
-      var dy = y_1-y_0;
-      this.nodes.forEach((node)=>{
-        node.moveNodePosition(dx*this.scaleFactor,dy*this.scaleFactor);
+    this.gridElement.style.backgroundSize = `${40*this.scaleFactor}px ${40*this.scaleFactor}px`
+    if ((zoomIn && this.scaleFactor <= 1.95) || (!zoomIn && this.scaleFactor >= .2)) {
+      const x_0 = e.clientX / this.scaleFactor;
+      const y_0 = e.clientY / this.scaleFactor;
+      this.scaleFactor += zoomIn ? .1 : -.1;
+      const x_1 = e.clientX / this.scaleFactor;
+      const y_1 = e.clientY / this.scaleFactor;
+      var dx = x_1 - x_0;
+      var dy = y_1 - y_0;
+      this.nodes.forEach((node) => {
+        node.moveNodePosition(dx * this.scaleFactor, dy * this.scaleFactor);
       })
     }
   }
-  exportNodeData = e =>{
+  exportNodeData = e => {
     const now = new Date();
     const jsonData = localStorage.getItem("sessionData");
     const blob = new Blob([jsonData], { type: 'application/json' });
@@ -347,29 +425,29 @@ class NodeBox {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-  validateSessionData(newSessionData){
+  validateSessionData(newSessionData) {
     return true
   }
-  loadFromFile = e =>{
+  loadFromFile = e => {
     const fileList = e.target.files
-    if (fileList.length > 0){
+    if (fileList.length > 0) {
       const fileToLoad = fileList[0];
       const reader = new FileReader();
-      reader.onload = function(e) {
-        try{
+      reader.onload = function (e) {
+        try {
           const newSessionData = JSON.parse(e.target.result);
-          if (nodeBox.validateSessionData(newSessionData)){
+          if (nodeBox.validateSessionData(newSessionData)) {
             nodeBox.loadAllData(JSON.stringify(newSessionData))
           }
         }
-        catch(err){
+        catch (err) {
           console.log(err)
           alert("Failed To Load Data");
         }
       };
       reader.readAsText(fileToLoad);
     }
-    document.getElementById("fileInput").value='';
+    document.getElementById("fileInput").value = '';
   }
 }
 
@@ -390,6 +468,8 @@ class InputMenu {
     this.top = 0;
     this.moveOrigin = [0, 0];
     this.element.addEventListener("mousedown", this.handleMouseDown)
+    this.fields['name'].children[1].addEventListener("click", () => { this.handleLayeredInputClick(this.fields['name']) });
+    this.fields['description'].children[1].addEventListener("click", () => { this.handleLayeredInputClick(this.fields['description']) });
   }
   handleSubmit = e => {
     const newMenuData = this.getMenuData();
@@ -407,6 +487,25 @@ class InputMenu {
         this.createNewTag(tagText);
       }
     }
+  }
+  handleLayeredInputClick(element) {
+    const inputLayer = element.children[0];
+    const displayLayer = element.children[1];
+    inputLayer.style.display = 'block';
+    displayLayer.style.display = 'none';
+    inputLayer.focus();
+    inputLayer.addEventListener("focusout", () => {
+      this.setLayeredInputValue(element, inputLayer.value), { once: true }
+    })
+  }
+  setLayeredInputValue(element, value) {
+    const inputLayer = element.children[0];
+    const displayLayer = element.children[1];
+    inputLayer.value = value;
+    displayLayer.innerHTML = value;
+    MathJax.typeset([displayLayer])
+    inputLayer.style.display = 'none';
+    displayLayer.style.display = 'block';
   }
   createNewTag(tagText) {
     const newTag = document.createElement("div");
@@ -433,15 +532,15 @@ class InputMenu {
     })
   }
   populate(nodeData) {
-    this.left = nodeData.x*nodeBox.scaleFactor + 50;
-    this.top = nodeData.y*nodeBox.scaleFactor - 250;
+    this.left = nodeData.x * nodeBox.scaleFactor + 50;
+    this.top = nodeData.y * nodeBox.scaleFactor - 250;
     this.element.style.left = `${this.left}px`;
     this.element.style.top = `${this.top}px`;
     [...this.tagBox.children].forEach((tag) => tag.remove());
     [...this.fields.connections.children].forEach((connection) => connection.remove());
     this.fields['id'].innerHTML = nodeData['id'];
-    this.fields['name'].value = nodeData['name'];
-    this.fields['description'].value = nodeData['description'];
+    this.setLayeredInputValue(this.fields['name'], nodeData['name'])
+    this.setLayeredInputValue(this.fields['description'], nodeData['description'])
     this.fields['tags'].children[0].value = '';
     this.element.style.display = "block";
     nodeData['tags'].forEach((tagText) => this.createNewTag(tagText));
@@ -452,8 +551,8 @@ class InputMenu {
   }
   getMenuData() {
     const tempNodeData = nodeBox.getNodeById(this.fields['id'].innerHTML).nodeData;
-    tempNodeData['name'] = this.fields['name'].value;
-    tempNodeData['description'] = this.fields['description'].value;
+    tempNodeData['name'] = this.fields['name'].children[0].value;
+    tempNodeData['description'] = this.fields['description'].children[0].value;
     tempNodeData['tags'] = this.getTagTexts();
     return tempNodeData
   }
@@ -482,10 +581,12 @@ const nodeBox = new NodeBox();
 const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
 const defaultNodeSize = 60;
 const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
-document.getElementById("importButton").addEventListener("click",()=>{document.getElementById("fileInput").click()})
-document.getElementById("fileInput").addEventListener("change",nodeBox.loadFromFile)
-document.getElementById("exportButton").addEventListener("click",nodeBox.exportNodeData);
-document.getElementById("deleteAllButton").addEventListener("click",nodeBox.removeAllNodes)
+
+document.getElementById("importButton").addEventListener("click", () => { document.getElementById("fileInput").click() })
+document.getElementById("fileInput").addEventListener("change", nodeBox.loadFromFile)
+document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
+document.getElementById("deleteAllButton").addEventListener("click", nodeBox.removeAllNodes)
+
 document.addEventListener("click", (e) => { rcMenu.close() })
 document.addEventListener("keypress", (e) => {
   if (e.key === 'Enter') {
@@ -494,7 +595,8 @@ document.addEventListener("keypress", (e) => {
 })
 document.addEventListener("keydown", (e) => {
   if (e.key === 'Escape') {
-    if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.element.style.display = 'none' }
+    if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.element.style.display = 'none' };
+    if (nodeBox.selectedNodes.length > 0) { nodeBox.clearSelectedNodes() }
   }
   else if (e.key == 's' && e.ctrlKey) {
     nodeBox.saveNodeData();
@@ -504,12 +606,13 @@ document.addEventListener("keydown", (e) => {
 
 if (document.addEventListener) {
   document.addEventListener('contextmenu', function (e) {
-    rcMenu.open(e);
     e.preventDefault();
   }, false);
 }
 
-
 if (localStorage.getItem('sessionData') != null) {
   nodeBox.loadAllData(localStorage.getItem('sessionData'));
 }
+
+
+// document.addEventListener("click",(e)=>{console.log(e.target)})
