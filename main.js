@@ -4,7 +4,7 @@ Features to implement:
 drag box relocating*
 style filters
 "find node" option in rcm
-grid system
+grid system*
 style page
 MathJAX support*
 fix edge positions on zooming
@@ -14,11 +14,13 @@ add input box resizing
 fix zooming breaking temp edge*
 latex rendering size bug on load.
 */
-
+// final pixel position = (absolute position + pan ) * scalefactor 
 
 
 const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
+const defaultGridSize = 40.0;
+const defaultNodeSize = 60;
 
 class rightClickMenu {
   constructor(element) {
@@ -120,7 +122,7 @@ class Node {
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
     this.openNodeMenu = true;
-    this.setPosition(x / nodeBox.scaleFactor, y / nodeBox.scaleFactor)
+    this.setPosition(x, y)
     this.createEboxes();
   }
   createEboxes() {
@@ -157,9 +159,17 @@ class Node {
     e.stopPropagation();
   }
   setPosition(x, y) {
+    const sf = nodeBox.scaleFactor;
+    //set true position
     this.nodeData.x = x;
     this.nodeData.y = y;
-    this.setScale(nodeBox.scaleFactor);
+    //add pan offset
+    var pixelPos = [x+nodeBox.pan[0],y+nodeBox.pan[1]]
+    //adjust for scale factor
+    pixelPos = pixelPos.map((x)=>x*sf)
+    this.element.style.left = `${pixelPos[0] - this.width*sf/2}px`
+    this.element.style.top = `${pixelPos[1] - this.height*sf/2}px`
+    this.setScale(sf);
     nodeBox.checkNodeEdges(this.id);
   }
   handleMouseMove = e => {
@@ -172,7 +182,7 @@ class Node {
   }
   setPositionFromEvent = e => {
     const sf = nodeBox.scaleFactor;
-    this.setPosition(e.clientX / sf, e.clientY / sf);
+    this.setPosition((e.clientX  / sf -nodeBox.pan[0]), (e.clientY  / sf -nodeBox.pan[1]));
   }
   moveNodePosition(dx, dy) {
     const sf = nodeBox.scaleFactor;
@@ -181,8 +191,6 @@ class Node {
   setScale(sf) {
     this.element.style.width = `${this.width * sf}px`;
     this.element.style.height = `${this.height * sf}px`;
-    this.element.style.left = `${(this.nodeData.x - this.width / 2) * sf}px`
-    this.element.style.top = `${(this.nodeData.y - this.height / 2) * sf}px`
     this.nameDisplay.style.fontSize = `${16 * sf}px`
   }
   handleEboxClick(e, eBoxType) {
@@ -205,7 +213,9 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    var eboxPositions = (type == 'top') ? [this.nodeData.x - this.width / 2, this.nodeData.y - this.height / 2] : [this.nodeData.x - this.width / 2, this.nodeData.y + this.height / 2];
+    const wf = this.width/2;
+    const hf = this.height/2;
+    var eboxPositions = (type == 'top') ? [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] - hf] : [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] +hf];
     return eboxPositions.map((x) => x * nodeBox.scaleFactor);
   }
   setNodeData(nodeData) {
@@ -227,11 +237,11 @@ class NodeBox {
     this.gridElement = document.getElementById("gridElement");
     this.nodes = [];
     this.edges = [];
-    this.panOriginX = 0;
-    this.panOriginY = 0;
+    this.panOrigin= [];
     this.element.addEventListener("mousedown", this.handleClick);
     this.originEbox = null;
     this.scaleFactor = 1;
+    this.pan=[0,0];
     this.selectionBox = document.getElementById("selectionBox");
     this.selectedNodes = [];
     document.addEventListener("wheel", this.handleZoom)
@@ -242,11 +252,10 @@ class NodeBox {
       if (nodeInputMenu.element.style.display == "block") {
         nodeInputMenu.element.style.display = "none";
       }
-      this.panOriginX = e.clientX;
-      this.panOriginY = e.clientY;
-      document.addEventListener("mousemove", this.panNodes);
+      this.panOrigin = [e.clientX,e.clientY];
+      document.addEventListener("mousemove", this.handleLeftDrag);
       document.addEventListener("mouseup", () => {
-        document.removeEventListener("mousemove", this.panNodes);
+        document.removeEventListener("mousemove", this.handleLeftDrag);
       }, { once: true })
     }
     else if (e.button === 2) {
@@ -276,7 +285,7 @@ class NodeBox {
       const ymin = Math.min(e.clientY, this.selectionOrigin[1]);
       const ymax = Math.max(e.clientY, this.selectionOrigin[1]);
       this.selectedNodes = this.nodes.filter((node) =>
-        node.nodeData.x * this.scaleFactor > xmin && node.nodeData.x * this.scaleFactor <= xmax && node.nodeData.y * this.scaleFactor > ymin && node.nodeData.y * this.scaleFactor < ymax
+        (node.nodeData.x+this.pan[0]) * this.scaleFactor > xmin && (node.nodeData.x+this.pan[0]) * this.scaleFactor <= xmax && (node.nodeData.y+this.pan[1]) * this.scaleFactor > ymin && (node.nodeData.y+this.pan[1]) * this.scaleFactor < ymax
       );
       this.selectedNodes.forEach((node) => { node.element.classList.add("selectedNode") })
     }
@@ -290,10 +299,27 @@ class NodeBox {
     })
     this.selectedNodes = [];
   }
-  panNodes = e => {
-    this.nodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
-    this.panOriginX = e.clientX;
-    this.panOriginY = e.clientY;
+  setPan(newPan){
+    console.log(this.scaleFactor)
+    this.pan = newPan;
+    this.gridElement.style.left = `${(this.pan[0]%defaultGridSize)*this.scaleFactor}px`
+    this.gridElement.style.top = `${(this.pan[1]%defaultGridSize)*this.scaleFactor}px`
+    this.gridElement.style.backgroundSize = `${defaultGridSize*this.scaleFactor}px ${defaultGridSize*this.scaleFactor}px`
+    this.refreshAllNodes();
+  }
+  handleZoom = e => {
+    const zoomIn = e.deltaY < 0;
+    if ((zoomIn && this.scaleFactor <= 1.95) || (!zoomIn && this.scaleFactor >= .2)) {
+      const oldSF = this.scaleFactor;
+      this.scaleFactor += (zoomIn ? .1 : -.1);
+      const clickCoords = [e.clientX,e.clientY];
+      this.setPan([0,1].map((x)=>this.pan[x]+clickCoords[x]*((1/this.scaleFactor)-(1/oldSF))))
+      this.refreshAllNodes();
+    }
+  }
+  handleLeftDrag = e => {
+    this.setPan([(e.clientX-this.panOrigin[0])/this.scaleFactor+this.pan[0],(e.clientY-this.panOrigin[1])/this.scaleFactor+this.pan[1]]);
+    this.panOrigin =[e.clientX,e.clientY];
     this.refreshAllEdges();
   }
   panSelectedNodes = e => {
@@ -333,6 +359,11 @@ class NodeBox {
     const p2 = this.getNodeById(edge.hid).getEboxPosition('bot');
     edge.edge.rebuildCurve(p1, p2);
   }
+  refreshAllNodes(){
+    this.nodes.forEach((node)=>{
+      node.setPosition(node.nodeData.x,node.nodeData.y)
+    })
+  }
   refreshAllEdges() {
     this.edges.forEach((edge) => this.refreshEdge(edge));
   }
@@ -368,6 +399,7 @@ class NodeBox {
     const saveData = {
       'settings': {
         'scaleFactor': this.scaleFactor,
+        'pan':this.pan,
       },
       'allNodeData': this.nodes.map((node) => node.nodeData)
     };
@@ -377,41 +409,26 @@ class NodeBox {
   loadAllData(sessionData) {
     const newSessionData = JSON.parse(sessionData);
     this.scaleFactor = newSessionData.settings.scaleFactor;
+    this.pan = newSessionData.settings.pan;
     console.log(newSessionData);
     this.removeAllNodes();
     newSessionData.allNodeData.forEach((nodeData) => {
       const newNode = this.addNode(null, nodeData.x, nodeData.y, nodeData.id);
       newNode.setNodeData(nodeData);
-      newNode.setPosition(nodeData.x, nodeData.y);
     })
     this.nodes.forEach((node) => {
       node.nodeData.connections.forEach((lid) => {
         this.addEdge(lid, node.id, false);
       })
     })
+    this.setPan(this.pan)
   }
-  setScale(sf) {
-    this.nodes.forEach((node) => {
-      node.setScale(sf);
-    })
+  // setScale(sf) {
+  //   this.nodes.forEach((node) => {
+  //     node.setScale(sf);
+  //   })
 
-  }
-  handleZoom = e => {
-    const zoomIn = e.deltaY < 0;
-    this.gridElement.style.backgroundSize = `${40*this.scaleFactor}px ${40*this.scaleFactor}px`
-    if ((zoomIn && this.scaleFactor <= 1.95) || (!zoomIn && this.scaleFactor >= .2)) {
-      const x_0 = e.clientX / this.scaleFactor;
-      const y_0 = e.clientY / this.scaleFactor;
-      this.scaleFactor += zoomIn ? .1 : -.1;
-      const x_1 = e.clientX / this.scaleFactor;
-      const y_1 = e.clientY / this.scaleFactor;
-      var dx = x_1 - x_0;
-      var dy = y_1 - y_0;
-      this.nodes.forEach((node) => {
-        node.moveNodePosition(dx * this.scaleFactor, dy * this.scaleFactor);
-      })
-    }
-  }
+  // } 
   exportNodeData = e => {
     const now = new Date();
     const jsonData = localStorage.getItem("sessionData");
@@ -579,7 +596,6 @@ class InputMenu {
 
 const nodeBox = new NodeBox();
 const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
-const defaultNodeSize = 60;
 const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
 
 document.getElementById("importButton").addEventListener("click", () => { document.getElementById("fileInput").click() })
@@ -587,7 +603,7 @@ document.getElementById("fileInput").addEventListener("change", nodeBox.loadFrom
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", nodeBox.removeAllNodes)
 
-document.addEventListener("click", (e) => { rcMenu.close() })
+document.addEventListener("click", (e) => { rcMenu.close()})
 document.addEventListener("keypress", (e) => {
   if (e.key === 'Enter') {
     if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() }
