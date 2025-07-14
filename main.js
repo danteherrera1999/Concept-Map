@@ -1,25 +1,27 @@
 /*
 Features to implement:
 
-drag box relocating*
 style filters
 "find node" option in rcm
-grid system*
 style page
-MathJAX support*
-fix edge positions on zooming
-add input field display and input layers
-add node resizing
 add input box resizing
+grid system*
+drag box relocating*
+MathJAX support*
+fix edge positions on zooming*
+add input field display and input layers*
+add node resizing*
 fix zooming breaking temp edge*
-latex rendering size bug on load.
+latex rendering size bug on load.*
+find way to resize mathjax svg without typsetting again (very taxing  ) * 
 */
+
 // final pixel position = (absolute position + pan ) * scalefactor 
 
 
 const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
-const defaultGridSize = 40.0;
+const defaultGridSize = 60.0;
 const defaultNodeSize = 60;
 
 class rightClickMenu {
@@ -28,7 +30,7 @@ class rightClickMenu {
     this.x = 0;
     this.y = 0;
     this.targetNodeId = 0;
-    this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x, this.y) });
+    this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x/nodeBox.scaleFactor-nodeBox.pan[0], this.y/nodeBox.scaleFactor-nodeBox.pan[1]) });
     this.element.children[1].addEventListener("click", () => { nodeBox.removeNodeById(this.targetNodeId) })
   }
   open(e) {
@@ -109,9 +111,9 @@ class Node {
       'connections': [],
       'x': 0,
       'y': 0,
+      'width':defaultNodeSize,
+      'height':defaultNodeSize
     }
-    this.width = defaultNodeSize;
-    this.height = defaultNodeSize;
     this.element = document.createElement('div');
     this.element.classList.add("node");
     this.nameDisplay = document.createElement("p")
@@ -122,8 +124,34 @@ class Node {
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
     this.openNodeMenu = true;
-    this.setPosition(x, y)
+    this.setPosition(x, y, true)
     this.createEboxes();
+    this.createSizeControl();
+  }
+  createSizeControl(){
+    this.sizeControl = document.createElement("div");
+    this.sizeControl.classList.add("sizeControl");
+    this.sizeControl.addEventListener("mousedown",this.handleSizeControlClick);
+    this.element.appendChild(this.sizeControl);
+  }
+  handleSizeControlClick=e=>{
+    document.addEventListener("mousemove",this.handleResize);
+    document.addEventListener("mouseup",()=>{document.removeEventListener("mousemove",this.handleResize)},{once:true});
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  handleResize=e=>{
+    const box = this.element.getBoundingClientRect();
+    const scaledGridSize = defaultGridSize*nodeBox.scaleFactor;
+    const deltas = nodeBox.snapNodes? [Math.round(e.clientX/scaledGridSize)*scaledGridSize-Math.round(box.left/(scaledGridSize))*scaledGridSize,Math.round(e.clientY/scaledGridSize)*scaledGridSize-Math.round(box.top/(scaledGridSize))*scaledGridSize]:[e.clientX-box.left,e.clientY-box.top];
+    const newWidth = Math.max(deltas[0]/nodeBox.scaleFactor,(nodeBox.snapNodes? defaultGridSize:defaultNodeSize));
+    const newHeight = Math.max(deltas[1]/nodeBox.scaleFactor,(nodeBox.snapNodes? defaultGridSize:defaultNodeSize));
+    var newX = this.nodeData.x + (newWidth - this.nodeData.width)/2;
+    var newY = this.nodeData.y + (newHeight - this.nodeData.height)/2;
+    this.nodeData.height=newHeight;
+    this.nodeData.width=newWidth;
+    this.setPosition(newX,newY,true);
+    e.stopPropagation();
   }
   createEboxes() {
     this.TopEbox = document.createElement("div");
@@ -158,18 +186,22 @@ class Node {
     e.preventDefault();
     e.stopPropagation();
   }
-  setPosition(x, y) {
+  setPosition(x, y,update_scale=false) {
     const sf = nodeBox.scaleFactor;
     //set true position
     this.nodeData.x = x;
     this.nodeData.y = y;
+    if (nodeBox.snapNodes){
+      this.nodeData.x = Math.round((x-this.nodeData.width/2)/defaultGridSize)*defaultGridSize+this.nodeData.width/2;
+      this.nodeData.y = Math.round((y-this.nodeData.height/2)/defaultGridSize)*defaultGridSize+this.nodeData.height/2;
+    }
     //add pan offset
-    var pixelPos = [x+nodeBox.pan[0],y+nodeBox.pan[1]]
+    var pixelPos = [this.nodeData.x+nodeBox.pan[0],this.nodeData.y+nodeBox.pan[1]]
     //adjust for scale factor
     pixelPos = pixelPos.map((x)=>x*sf)
-    this.element.style.left = `${pixelPos[0] - this.width*sf/2}px`
-    this.element.style.top = `${pixelPos[1] - this.height*sf/2}px`
-    this.setScale(sf);
+    this.element.style.left = `${pixelPos[0] - this.nodeData.width*sf/2}px`
+    this.element.style.top = `${pixelPos[1] - this.nodeData.height*sf/2}px`
+    if (update_scale==true){this.setScale(sf)};
     nodeBox.checkNodeEdges(this.id);
   }
   handleMouseMove = e => {
@@ -189,9 +221,13 @@ class Node {
     this.setPosition(this.nodeData.x + dx / sf, this.nodeData.y + dy / sf)
   }
   setScale(sf) {
-    this.element.style.width = `${this.width * sf}px`;
-    this.element.style.height = `${this.height * sf}px`;
-    this.nameDisplay.style.fontSize = `${16 * sf}px`
+    this.element.style.width = `${this.nodeData.width * sf}px`;
+    this.element.style.height = `${this.nodeData.height * sf}px`;
+    this.nameDisplay.style.fontSize = `${16 * sf}px`;
+    if (this.nameDisplay.children.length>0){
+      this.nameDisplay.innerHTML = this.nodeData.name == '' ? `Node ${this.nodeData.id}` : this.nodeData.name; //I dont know why but this is required or mathjax will not update scale
+      MathJax.typeset([this.nameDisplay]);
+    }
   }
   handleEboxClick(e, eBoxType) {
     nodeBox.originEbox = { type: eBoxType, NodeId: this.id };
@@ -213,14 +249,18 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    const wf = this.width/2;
-    const hf = this.height/2;
+    const wf = this.nodeData.width/2;
+    const hf = this.nodeData.height/2;
     var eboxPositions = (type == 'top') ? [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] - hf] : [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] +hf];
     return eboxPositions.map((x) => x * nodeBox.scaleFactor);
   }
   setNodeData(nodeData) {
+    console.log("setting node data")
     if (true) {
-      this.nodeData = nodeData;
+      //Override nodedata elements but keep defaults if no new item is given;
+      for (const key in nodeData){
+        this.nodeData[key] = nodeData[key];
+      }
       this.nameDisplay.innerHTML = nodeData.name == '' ? `Node ${nodeData.id}` : nodeData.name;
       MathJax.typeset([this.nameDisplay]);
     }
@@ -244,6 +284,8 @@ class NodeBox {
     this.pan=[0,0];
     this.selectionBox = document.getElementById("selectionBox");
     this.selectedNodes = [];
+    this.mapNameInput = document.getElementById("mapNameInput")
+    this.snapNodes = true;
     document.addEventListener("wheel", this.handleZoom)
     document.addEventListener("mouseup", () => { this.originEbox = null })
   }
@@ -299,13 +341,12 @@ class NodeBox {
     })
     this.selectedNodes = [];
   }
-  setPan(newPan){
-    console.log(this.scaleFactor)
+  setPan(newPan,update_scale=false){
     this.pan = newPan;
     this.gridElement.style.left = `${(this.pan[0]%defaultGridSize)*this.scaleFactor}px`
     this.gridElement.style.top = `${(this.pan[1]%defaultGridSize)*this.scaleFactor}px`
     this.gridElement.style.backgroundSize = `${defaultGridSize*this.scaleFactor}px ${defaultGridSize*this.scaleFactor}px`
-    this.refreshAllNodes();
+    this.refreshAllNodes(update_scale);
   }
   handleZoom = e => {
     const zoomIn = e.deltaY < 0;
@@ -313,8 +354,7 @@ class NodeBox {
       const oldSF = this.scaleFactor;
       this.scaleFactor += (zoomIn ? .1 : -.1);
       const clickCoords = [e.clientX,e.clientY];
-      this.setPan([0,1].map((x)=>this.pan[x]+clickCoords[x]*((1/this.scaleFactor)-(1/oldSF))))
-      this.refreshAllNodes();
+      this.setPan([0,1].map((x)=>this.pan[x]+clickCoords[x]*((1/this.scaleFactor)-(1/oldSF))),true)
     }
   }
   handleLeftDrag = e => {
@@ -323,9 +363,11 @@ class NodeBox {
     this.refreshAllEdges();
   }
   panSelectedNodes = e => {
-    this.selectedNodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
-    this.panOriginX = e.clientX;
-    this.panOriginY = e.clientY;
+    if (!this.snapNodes || (Math.abs(e.clientX - this.panOriginX)>(defaultGridSize*this.scaleFactor)) || (Math.abs(e.clientY - this.panOriginY)>(defaultGridSize*this.scaleFactor))){
+      this.selectedNodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
+      this.panOriginX = e.clientX;
+      this.panOriginY = e.clientY;
+    }
     this.refreshAllEdges();
   }
   removeNodeById(id) {
@@ -359,9 +401,9 @@ class NodeBox {
     const p2 = this.getNodeById(edge.hid).getEboxPosition('bot');
     edge.edge.rebuildCurve(p1, p2);
   }
-  refreshAllNodes(){
+  refreshAllNodes(update_scale=false){
     this.nodes.forEach((node)=>{
-      node.setPosition(node.nodeData.x,node.nodeData.y)
+      node.setPosition(node.nodeData.x,node.nodeData.y,update_scale);
     })
   }
   refreshAllEdges() {
@@ -398,8 +440,10 @@ class NodeBox {
   saveNodeData() {
     const saveData = {
       'settings': {
+        'mapName':this.mapNameInput.value,
         'scaleFactor': this.scaleFactor,
         'pan':this.pan,
+        'gridSnap':this.snapNodes
       },
       'allNodeData': this.nodes.map((node) => node.nodeData)
     };
@@ -410,6 +454,9 @@ class NodeBox {
     const newSessionData = JSON.parse(sessionData);
     this.scaleFactor = newSessionData.settings.scaleFactor;
     this.pan = newSessionData.settings.pan;
+    this.mapNameInput.value = newSessionData.settings.mapName;
+    this.snapNodes = newSessionData.settings.gridSnap;
+    document.getElementById("gridSnapButton").innerHTML= this.snapNodes?"Snap":"No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
     newSessionData.allNodeData.forEach((nodeData) => {
@@ -421,14 +468,8 @@ class NodeBox {
         this.addEdge(lid, node.id, false);
       })
     })
-    this.setPan(this.pan)
+    this.setPan(this.pan,true)
   }
-  // setScale(sf) {
-  //   this.nodes.forEach((node) => {
-  //     node.setScale(sf);
-  //   })
-
-  // } 
   exportNodeData = e => {
     const now = new Date();
     const jsonData = localStorage.getItem("sessionData");
@@ -436,7 +477,7 @@ class NodeBox {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${now.getMinutes()}_${now.getHours()}_${now.getDate()}_${now.getFullYear()}.json`;
+    a.download = `${this.mapNameInput.value}_${now.getFullYear()}_${now.getDate()}_${now.getHours()}_${now.getMinutes()}.json`;
     document.body.appendChild(a);
     a.click()
     document.body.removeChild(a);
@@ -466,11 +507,63 @@ class NodeBox {
     }
     document.getElementById("fileInput").value = '';
   }
+  setNodeStyle(node,styleType,style){
+    switch(styleType){
+      case "backgroundColor":
+        node.element.style.backgroundColor = style;
+        break;
+      case "border":
+        node.element.style.border = `2px solid ${style}`;
+        break;
+    }
+  }
+  getAllPreconnects(targetNode){
+    const preconnects = targetNode.nodeData.connections.map((nodeId)=>this.getNodeById(nodeId));
+    return preconnects.concat(...preconnects.map((preconnect)=>this.getAllPreconnects(preconnect)));
+
+  }
+  processRule(rule){
+    rule = {
+      "styleType":'backgroundColor',
+      "style": 'red',
+      "ruleType":'preconnect',
+      "target":8,
+    };
+    rule = {
+      "styleType":'border',
+      "style": 'blue',
+      "ruleType":'tag',
+      "target":'my tag',
+    };
+    console.log(rule);
+    switch (rule.ruleType){
+      case "preconnect":
+        this.getAllPreconnects(this.getNodeById(rule.target)).forEach((preconnect)=>{
+          this.setNodeStyle(preconnect,rule.styleType,rule.style);
+        });
+      case "tag":
+        this.nodes.forEach((node)=>{if (node.nodeData.tags.includes(rule.target)){this.setNodeStyle(node,rule.styleType,rule.style)}})
+    }
+  }
+}
+
+class RuleMenu{
+  constructor(){
+    this.ruleBox = document.getElementById("ruleBox");
+    this.element = document.getElementById("ruleMenu");
+    this.ruleBox.children[0].addEventListener("click",this.openMenu);
+    this.rules =[];
+  }
+  openMenu = e =>{
+    this.element.style.display='block';
+  }
 }
 
 class InputMenu {
   constructor(element) {
     this.element = element;
+    this.height = window.innerHeight*.3;
+    this.width = window.innerWidth*.3;
     this.element.style.display = "none";
     this.fields = {
       'id': document.getElementById("idInputField"),
@@ -549,10 +642,10 @@ class InputMenu {
     })
   }
   populate(nodeData) {
-    this.left = nodeData.x * nodeBox.scaleFactor + 50;
-    this.top = nodeData.y * nodeBox.scaleFactor - 250;
-    this.element.style.left = `${this.left}px`;
-    this.element.style.top = `${this.top}px`;
+    this.left = (nodeData.x+nodeBox.pan[0]) * nodeBox.scaleFactor + 50;
+    this.top = (nodeData.y+nodeBox.pan[1]) * nodeBox.scaleFactor - 250;
+    this.element.style.left = `${Math.min(Math.max(0,this.left),window.innerWidth-this.width)}px`;
+    this.element.style.top = `${Math.min(Math.max(0,this.top),window.innerHeight-this.height)}px`;
     [...this.tagBox.children].forEach((tag) => tag.remove());
     [...this.fields.connections.children].forEach((connection) => connection.remove());
     this.fields['id'].innerHTML = nodeData['id'];
@@ -596,12 +689,16 @@ class InputMenu {
 
 const nodeBox = new NodeBox();
 const rcMenu = new rightClickMenu(document.getElementById("rcMenu"));
-const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"))
+const nodeInputMenu = new InputMenu(document.getElementById("nodeMenu"));
+const ruleMenu = new RuleMenu();
 
+//Add button functionality
 document.getElementById("importButton").addEventListener("click", () => { document.getElementById("fileInput").click() })
 document.getElementById("fileInput").addEventListener("change", nodeBox.loadFromFile)
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", nodeBox.removeAllNodes)
+document.getElementById("gridSnapButton").addEventListener("click", (e)=>{e.target.innerHTML = (nodeBox.snapNodes?"No Snap":"Snap");nodeBox.snapNodes = !nodeBox.snapNodes})
+
 
 document.addEventListener("click", (e) => { rcMenu.close()})
 document.addEventListener("keypress", (e) => {
@@ -630,5 +727,5 @@ if (localStorage.getItem('sessionData') != null) {
   nodeBox.loadAllData(localStorage.getItem('sessionData'));
 }
 
-
-// document.addEventListener("click",(e)=>{console.log(e.target)})
+nodeBox.processRule(null);
+document.addEventListener("click",(e)=>{console.log(e.target)})

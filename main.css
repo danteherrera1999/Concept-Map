@@ -45,18 +45,21 @@
     display: flex;
     align-items: center;
     cursor: pointer;
+    border-style: border-box;
 }
 
 .node:hover{
-    border: 1px dashed orange;
+    border: 1px dashed orange !important;
 }
 
 .nodeName{
     margin: 0;
-    width: 100%;
+    width: fit-content;
+    height: fit-content;
     color: white;
     font-family: eurostile;
     text-align: center;
+    margin: auto;
 }
 
 .nodeEbox{
@@ -70,11 +73,24 @@
     height: min(15%,10px);
     left:0;
 }
+.sizeControl{
+    position: absolute;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-radius: 10%;
+    border: none;
+    width: min(15%,10px);
+    height: min(15%,10px);
+    cursor: nwse-resize;
+    right:0;
+    bottom: 0;
+}
 .nodeEbox:hover{
     border-style: solid;
 }
 .selectedNode{
-    border:2px solid orange;
+    border:2px solid orange !important;
 }
 .curve{
     box-sizing: border-box;
@@ -122,8 +138,8 @@
     fill: orange;
 }
 #nodeMenu{
-    width: 40vw;
-    height: 40vh;
+    width: 30vw;
+    height: 30vw;
     position: fixed;
     z-index: 500;
 }
@@ -224,6 +240,7 @@ p{
     padding: 0;
     left: 0;
     top:0;
+    overflow: hidden;
 }
 #sideMenu > a{
     width:100%;
@@ -261,4 +278,45 @@ p{
     display: none;
     position: absolute;
     z-index: 1;
+}
+#mapNameInput{
+    width:100vw;
+    height:1em;
+    background-color: grey;
+    color: white;
+    font-style: eurostile;
+    position: fixed;
+    top:0;
+    left:0;
+    border: none;
+    z-index: 999;
+    text-align: center;
+}
+#mapNameInput::placeholder{
+    color: white;
+}
+#ruleBox{
+    position: absolute;
+    display: flex;
+    width: 100%;
+    height: 40%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    background-color: wheat;
+    bottom: 0;
+    flex-direction: column;
+}
+#rulebox > a{
+    width: 100%;
+    height: 10%;
+}
+#ruleMenu{
+    position: absolute;
+    width: 70%;
+    height: 60%;
+    top: 20%;
+    left: 15%;
+    background-color: bisque;
+    z-index: 9999;
+    display:none;
 }
