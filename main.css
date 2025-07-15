@@ -3,7 +3,7 @@
     height:100vh;
     width: 100vw;
     overflow: hidden;
-    border-style: border-box;
+    box-sizing: border-box;
 }
 #rcMenu{
     height: 40px;
@@ -230,7 +230,7 @@ p{
 #sideMenu{
     z-index: 1000;
     height:100vh;
-    width:50px;
+    width:100px;
     position: fixed;
     margin: 0;
     background-color: grey;
@@ -295,7 +295,7 @@ p{
 #mapNameInput::placeholder{
     color: white;
 }
-#ruleBox{
+#ruleList{
     position: absolute;
     display: flex;
     width: 100%;
@@ -306,7 +306,7 @@ p{
     bottom: 0;
     flex-direction: column;
 }
-#rulebox > a{
+#ruleList > a{
     width: 100%;
     height: 10%;
 }
@@ -319,4 +319,60 @@ p{
     background-color: bisque;
     z-index: 9999;
     display:none;
+}
+#ruleMenu > div{
+    position: absolute;
+    border: 1px solid black;
+    box-sizing: border-box;
+}
+#ruleMenuTitleDiv{
+    width: 20%;
+    height: 20%;
+    top:0;
+    left:0;
+    display:flex;
+    justify-content: center;
+}
+#ruleMenuTitleDiv > h1{
+    margin:0;
+    font-style: eurostile;
+    width: fit-content;
+    height: fit-content;
+}
+#menuRuleList{
+    width: 20%;
+    height: 80%;
+    bottom:0;
+    left: 0;
+}
+#ruleEditInput{
+    left:20%;
+    top:0;
+    height: 40%;
+    width: 80%;
+}
+#exampleDisplay{
+    bottom:0;
+    left:20%;
+    width: 60%;
+    height: 60%;
+}
+#affectedNodesList{
+    right:0;
+    bottom:0;
+    width: 20%;
+    height: 60%;
+}
+.styleRule{
+    width:100%;
+    height:2rem;
+    display: grid;
+    grid-template-columns: 6fr 2fr 2fr;
+    overflow: hidden;
+}
+.styleRule > p{
+    border: 1px solid red;
+    height: 2rem;
+    margin:0;
+    cursor: pointer;
 }

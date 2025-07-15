@@ -23,6 +23,8 @@ const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
 const defaultGridSize = 60.0;
 const defaultNodeSize = 60;
+const defaultNodeBackgroundColor = 'grey';
+const defaultNodeBorder= 'none';
 
 class rightClickMenu {
   constructor(element) {
@@ -30,7 +32,7 @@ class rightClickMenu {
     this.x = 0;
     this.y = 0;
     this.targetNodeId = 0;
-    this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x/nodeBox.scaleFactor-nodeBox.pan[0], this.y/nodeBox.scaleFactor-nodeBox.pan[1]) });
+    this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x / nodeBox.scaleFactor - nodeBox.pan[0], this.y / nodeBox.scaleFactor - nodeBox.pan[1]) });
     this.element.children[1].addEventListener("click", () => { nodeBox.removeNodeById(this.targetNodeId) })
   }
   open(e) {
@@ -111,8 +113,8 @@ class Node {
       'connections': [],
       'x': 0,
       'y': 0,
-      'width':defaultNodeSize,
-      'height':defaultNodeSize
+      'width': defaultNodeSize,
+      'height': defaultNodeSize
     }
     this.element = document.createElement('div');
     this.element.classList.add("node");
@@ -128,29 +130,29 @@ class Node {
     this.createEboxes();
     this.createSizeControl();
   }
-  createSizeControl(){
+  createSizeControl() {
     this.sizeControl = document.createElement("div");
     this.sizeControl.classList.add("sizeControl");
-    this.sizeControl.addEventListener("mousedown",this.handleSizeControlClick);
+    this.sizeControl.addEventListener("mousedown", this.handleSizeControlClick);
     this.element.appendChild(this.sizeControl);
   }
-  handleSizeControlClick=e=>{
-    document.addEventListener("mousemove",this.handleResize);
-    document.addEventListener("mouseup",()=>{document.removeEventListener("mousemove",this.handleResize)},{once:true});
+  handleSizeControlClick = e => {
+    document.addEventListener("mousemove", this.handleResize);
+    document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleResize) }, { once: true });
     e.stopPropagation();
     e.preventDefault();
   }
-  handleResize=e=>{
+  handleResize = e => {
     const box = this.element.getBoundingClientRect();
-    const scaledGridSize = defaultGridSize*nodeBox.scaleFactor;
-    const deltas = nodeBox.snapNodes? [Math.round(e.clientX/scaledGridSize)*scaledGridSize-Math.round(box.left/(scaledGridSize))*scaledGridSize,Math.round(e.clientY/scaledGridSize)*scaledGridSize-Math.round(box.top/(scaledGridSize))*scaledGridSize]:[e.clientX-box.left,e.clientY-box.top];
-    const newWidth = Math.max(deltas[0]/nodeBox.scaleFactor,(nodeBox.snapNodes? defaultGridSize:defaultNodeSize));
-    const newHeight = Math.max(deltas[1]/nodeBox.scaleFactor,(nodeBox.snapNodes? defaultGridSize:defaultNodeSize));
-    var newX = this.nodeData.x + (newWidth - this.nodeData.width)/2;
-    var newY = this.nodeData.y + (newHeight - this.nodeData.height)/2;
-    this.nodeData.height=newHeight;
-    this.nodeData.width=newWidth;
-    this.setPosition(newX,newY,true);
+    const scaledGridSize = defaultGridSize * nodeBox.scaleFactor;
+    const deltas = nodeBox.snapNodes ? [Math.round(e.clientX / scaledGridSize) * scaledGridSize - Math.round(box.left / (scaledGridSize)) * scaledGridSize, Math.round(e.clientY / scaledGridSize) * scaledGridSize - Math.round(box.top / (scaledGridSize)) * scaledGridSize] : [e.clientX - box.left, e.clientY - box.top];
+    const newWidth = Math.max(deltas[0] / nodeBox.scaleFactor, (nodeBox.snapNodes ? defaultGridSize : defaultNodeSize));
+    const newHeight = Math.max(deltas[1] / nodeBox.scaleFactor, (nodeBox.snapNodes ? defaultGridSize : defaultNodeSize));
+    var newX = this.nodeData.x + (newWidth - this.nodeData.width) / 2;
+    var newY = this.nodeData.y + (newHeight - this.nodeData.height) / 2;
+    this.nodeData.height = newHeight;
+    this.nodeData.width = newWidth;
+    this.setPosition(newX, newY, true);
     e.stopPropagation();
   }
   createEboxes() {
@@ -186,22 +188,22 @@ class Node {
     e.preventDefault();
     e.stopPropagation();
   }
-  setPosition(x, y,update_scale=false) {
+  setPosition(x, y, update_scale = false) {
     const sf = nodeBox.scaleFactor;
     //set true position
     this.nodeData.x = x;
     this.nodeData.y = y;
-    if (nodeBox.snapNodes){
-      this.nodeData.x = Math.round((x-this.nodeData.width/2)/defaultGridSize)*defaultGridSize+this.nodeData.width/2;
-      this.nodeData.y = Math.round((y-this.nodeData.height/2)/defaultGridSize)*defaultGridSize+this.nodeData.height/2;
+    if (nodeBox.snapNodes) {
+      this.nodeData.x = Math.round((x - this.nodeData.width / 2) / defaultGridSize) * defaultGridSize + this.nodeData.width / 2;
+      this.nodeData.y = Math.round((y - this.nodeData.height / 2) / defaultGridSize) * defaultGridSize + this.nodeData.height / 2;
     }
     //add pan offset
-    var pixelPos = [this.nodeData.x+nodeBox.pan[0],this.nodeData.y+nodeBox.pan[1]]
+    var pixelPos = [this.nodeData.x + nodeBox.pan[0], this.nodeData.y + nodeBox.pan[1]]
     //adjust for scale factor
-    pixelPos = pixelPos.map((x)=>x*sf)
-    this.element.style.left = `${pixelPos[0] - this.nodeData.width*sf/2}px`
-    this.element.style.top = `${pixelPos[1] - this.nodeData.height*sf/2}px`
-    if (update_scale==true){this.setScale(sf)};
+    pixelPos = pixelPos.map((x) => x * sf)
+    this.element.style.left = `${pixelPos[0] - this.nodeData.width * sf / 2}px`
+    this.element.style.top = `${pixelPos[1] - this.nodeData.height * sf / 2}px`
+    if (update_scale == true) { this.setScale(sf) };
     nodeBox.checkNodeEdges(this.id);
   }
   handleMouseMove = e => {
@@ -214,7 +216,7 @@ class Node {
   }
   setPositionFromEvent = e => {
     const sf = nodeBox.scaleFactor;
-    this.setPosition((e.clientX  / sf -nodeBox.pan[0]), (e.clientY  / sf -nodeBox.pan[1]));
+    this.setPosition((e.clientX / sf - nodeBox.pan[0]), (e.clientY / sf - nodeBox.pan[1]));
   }
   moveNodePosition(dx, dy) {
     const sf = nodeBox.scaleFactor;
@@ -224,7 +226,7 @@ class Node {
     this.element.style.width = `${this.nodeData.width * sf}px`;
     this.element.style.height = `${this.nodeData.height * sf}px`;
     this.nameDisplay.style.fontSize = `${16 * sf}px`;
-    if (this.nameDisplay.children.length>0){
+    if (this.nameDisplay.children.length > 0) {
       this.nameDisplay.innerHTML = this.nodeData.name == '' ? `Node ${this.nodeData.id}` : this.nodeData.name; //I dont know why but this is required or mathjax will not update scale
       MathJax.typeset([this.nameDisplay]);
     }
@@ -249,16 +251,16 @@ class Node {
     }
   }
   getEboxPosition(type) {
-    const wf = this.nodeData.width/2;
-    const hf = this.nodeData.height/2;
-    var eboxPositions = (type == 'top') ? [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] - hf] : [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] +hf];
+    const wf = this.nodeData.width / 2;
+    const hf = this.nodeData.height / 2;
+    var eboxPositions = (type == 'top') ? [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] - hf] : [this.nodeData.x + nodeBox.pan[0] - wf, this.nodeData.y + nodeBox.pan[1] + hf];
     return eboxPositions.map((x) => x * nodeBox.scaleFactor);
   }
   setNodeData(nodeData) {
     console.log("setting node data")
     if (true) {
       //Override nodedata elements but keep defaults if no new item is given;
-      for (const key in nodeData){
+      for (const key in nodeData) {
         this.nodeData[key] = nodeData[key];
       }
       this.nameDisplay.innerHTML = nodeData.name == '' ? `Node ${nodeData.id}` : nodeData.name;
@@ -277,15 +279,16 @@ class NodeBox {
     this.gridElement = document.getElementById("gridElement");
     this.nodes = [];
     this.edges = [];
-    this.panOrigin= [];
+    this.panOrigin = [];
     this.element.addEventListener("mousedown", this.handleClick);
     this.originEbox = null;
     this.scaleFactor = 1;
-    this.pan=[0,0];
+    this.pan = [0, 0];
     this.selectionBox = document.getElementById("selectionBox");
     this.selectedNodes = [];
     this.mapNameInput = document.getElementById("mapNameInput")
     this.snapNodes = true;
+    this.rules = [];
     document.addEventListener("wheel", this.handleZoom)
     document.addEventListener("mouseup", () => { this.originEbox = null })
   }
@@ -294,7 +297,7 @@ class NodeBox {
       if (nodeInputMenu.element.style.display == "block") {
         nodeInputMenu.element.style.display = "none";
       }
-      this.panOrigin = [e.clientX,e.clientY];
+      this.panOrigin = [e.clientX, e.clientY];
       document.addEventListener("mousemove", this.handleLeftDrag);
       document.addEventListener("mouseup", () => {
         document.removeEventListener("mousemove", this.handleLeftDrag);
@@ -327,7 +330,7 @@ class NodeBox {
       const ymin = Math.min(e.clientY, this.selectionOrigin[1]);
       const ymax = Math.max(e.clientY, this.selectionOrigin[1]);
       this.selectedNodes = this.nodes.filter((node) =>
-        (node.nodeData.x+this.pan[0]) * this.scaleFactor > xmin && (node.nodeData.x+this.pan[0]) * this.scaleFactor <= xmax && (node.nodeData.y+this.pan[1]) * this.scaleFactor > ymin && (node.nodeData.y+this.pan[1]) * this.scaleFactor < ymax
+        (node.nodeData.x + this.pan[0]) * this.scaleFactor > xmin && (node.nodeData.x + this.pan[0]) * this.scaleFactor <= xmax && (node.nodeData.y + this.pan[1]) * this.scaleFactor > ymin && (node.nodeData.y + this.pan[1]) * this.scaleFactor < ymax
       );
       this.selectedNodes.forEach((node) => { node.element.classList.add("selectedNode") })
     }
@@ -341,11 +344,11 @@ class NodeBox {
     })
     this.selectedNodes = [];
   }
-  setPan(newPan,update_scale=false){
+  setPan(newPan, update_scale = false) {
     this.pan = newPan;
-    this.gridElement.style.left = `${(this.pan[0]%defaultGridSize)*this.scaleFactor}px`
-    this.gridElement.style.top = `${(this.pan[1]%defaultGridSize)*this.scaleFactor}px`
-    this.gridElement.style.backgroundSize = `${defaultGridSize*this.scaleFactor}px ${defaultGridSize*this.scaleFactor}px`
+    this.gridElement.style.left = `${(this.pan[0] % defaultGridSize) * this.scaleFactor}px`
+    this.gridElement.style.top = `${(this.pan[1] % defaultGridSize) * this.scaleFactor}px`
+    this.gridElement.style.backgroundSize = `${defaultGridSize * this.scaleFactor}px ${defaultGridSize * this.scaleFactor}px`
     this.refreshAllNodes(update_scale);
   }
   handleZoom = e => {
@@ -353,17 +356,17 @@ class NodeBox {
     if ((zoomIn && this.scaleFactor <= 1.95) || (!zoomIn && this.scaleFactor >= .2)) {
       const oldSF = this.scaleFactor;
       this.scaleFactor += (zoomIn ? .1 : -.1);
-      const clickCoords = [e.clientX,e.clientY];
-      this.setPan([0,1].map((x)=>this.pan[x]+clickCoords[x]*((1/this.scaleFactor)-(1/oldSF))),true)
+      const clickCoords = [e.clientX, e.clientY];
+      this.setPan([0, 1].map((x) => this.pan[x] + clickCoords[x] * ((1 / this.scaleFactor) - (1 / oldSF))), true)
     }
   }
   handleLeftDrag = e => {
-    this.setPan([(e.clientX-this.panOrigin[0])/this.scaleFactor+this.pan[0],(e.clientY-this.panOrigin[1])/this.scaleFactor+this.pan[1]]);
-    this.panOrigin =[e.clientX,e.clientY];
+    this.setPan([(e.clientX - this.panOrigin[0]) / this.scaleFactor + this.pan[0], (e.clientY - this.panOrigin[1]) / this.scaleFactor + this.pan[1]]);
+    this.panOrigin = [e.clientX, e.clientY];
     this.refreshAllEdges();
   }
   panSelectedNodes = e => {
-    if (!this.snapNodes || (Math.abs(e.clientX - this.panOriginX)>(defaultGridSize*this.scaleFactor)) || (Math.abs(e.clientY - this.panOriginY)>(defaultGridSize*this.scaleFactor))){
+    if (!this.snapNodes || (Math.abs(e.clientX - this.panOriginX) > (defaultGridSize * this.scaleFactor)) || (Math.abs(e.clientY - this.panOriginY) > (defaultGridSize * this.scaleFactor))) {
       this.selectedNodes.forEach((node) => { node.moveNodePosition(e.clientX - this.panOriginX, e.clientY - this.panOriginY) })
       this.panOriginX = e.clientX;
       this.panOriginY = e.clientY;
@@ -390,7 +393,7 @@ class NodeBox {
       const newEdge = new Edge(p1, p2);
       nodeBox.edgeBox.appendChild(newEdge.path);
       this.edges.push({ lid: lid, hid: hid, edge: newEdge });
-      if (addEdgeToNode) { this.getNodeById(hid).nodeData.connections.push(lid) };
+      if (addEdgeToNode) { this.getNodeById(hid).nodeData.connections.push(lid);nodeBox.refreshStyleRules()};
     }
   }
   checkNodeEdges(nid) {
@@ -401,9 +404,9 @@ class NodeBox {
     const p2 = this.getNodeById(edge.hid).getEboxPosition('bot');
     edge.edge.rebuildCurve(p1, p2);
   }
-  refreshAllNodes(update_scale=false){
-    this.nodes.forEach((node)=>{
-      node.setPosition(node.nodeData.x,node.nodeData.y,update_scale);
+  refreshAllNodes(update_scale = false) {
+    this.nodes.forEach((node) => {
+      node.setPosition(node.nodeData.x, node.nodeData.y, update_scale);
     })
   }
   refreshAllEdges() {
@@ -426,7 +429,7 @@ class NodeBox {
     })
     path.path.remove();
     this.edges = this.edges.filter((edge) => edge.edge != path);
-
+    this.refreshStyleRules();
   }
   validateNodeData(nodeData) {
     var isValid = true;
@@ -440,10 +443,10 @@ class NodeBox {
   saveNodeData() {
     const saveData = {
       'settings': {
-        'mapName':this.mapNameInput.value,
+        'mapName': this.mapNameInput.value,
         'scaleFactor': this.scaleFactor,
-        'pan':this.pan,
-        'gridSnap':this.snapNodes
+        'pan': this.pan,
+        'gridSnap': this.snapNodes
       },
       'allNodeData': this.nodes.map((node) => node.nodeData)
     };
@@ -457,17 +460,21 @@ class NodeBox {
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
     this.rules = [{
-      "styleType":'backgroundColor',
+      "title": "rule 1",
+      "hidden": false,
+      "styleType": 'backgroundColor',
       "style": 'red',
-      "ruleType":'preconnect',
-      "target":8,
-    },{
-      "styleType":'border',
+      "ruleType": 'preconnect',
+      "target": 0,
+    }, {
+      "title": "rule 2",
+      "hidden": false,
+      "styleType": 'border',
       "style": 'blue',
-      "ruleType":'tag',
-      "target":'my tag',
+      "ruleType": 'tag',
+      "target": 'my tag',
     }];
-    document.getElementById("gridSnapButton").innerHTML= this.snapNodes?"Snap":"No Snap";
+    document.getElementById("gridSnapButton").innerHTML = this.snapNodes ? "Snap" : "No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
     newSessionData.allNodeData.forEach((nodeData) => {
@@ -479,8 +486,17 @@ class NodeBox {
         this.addEdge(lid, node.id, false);
       })
     })
-    this.rules.forEach((rule)=>{this.processRule(rule)})
-    this.setPan(this.pan,true)
+    this.refreshStyleRules();
+    this.setPan(this.pan, true);
+    ruleMenu.openMenu();
+    ruleMenu.closeMenu();
+  }
+  refreshStyleRules(){
+    this.nodes.forEach((node)=>{
+      node.element.style.backgroundColor = defaultNodeBackgroundColor;
+      node.element.style.border = defaultNodeBorder;
+    })
+    this.rules.forEach((rule) => { if(!rule.hidden){this.processRule(rule) }})
   }
   exportNodeData = e => {
     const now = new Date();
@@ -519,51 +535,92 @@ class NodeBox {
     }
     document.getElementById("fileInput").value = '';
   }
-  setNodeStyle(node,styleType,style){
-    switch(styleType){
+  setNodeStyle(node, styleType, style) {
+    switch (styleType) {
       case "backgroundColor":
-        node.element.style.backgroundColor = style;
+        node.element.style.backgroundColor =style;
         break;
       case "border":
-        node.element.style.border = `2px solid ${style}`;
+        node.element.style.border =`2px solid ${style}`;
         break;
     }
   }
-  getAllPreconnects(targetNode){
-    const preconnects = targetNode.nodeData.connections.map((nodeId)=>this.getNodeById(nodeId));
-    return preconnects.concat(...preconnects.map((preconnect)=>this.getAllPreconnects(preconnect)));
+  getAllPreconnects(targetNode) {
+    const preconnects = targetNode.nodeData.connections.map((nodeId) => this.getNodeById(nodeId));
+    return preconnects.concat(...preconnects.map((preconnect) => this.getAllPreconnects(preconnect)));
 
   }
-  processRule(rule){
-    console.log(rule);
-    switch (rule.ruleType){
-      case "preconnect":
-        this.getAllPreconnects(this.getNodeById(rule.target)).forEach((preconnect)=>{
-          this.setNodeStyle(preconnect,rule.styleType,rule.style);
-        });
-      case "tag":
-        this.nodes.forEach((node)=>{if (node.nodeData.tags.includes(rule.target)){this.setNodeStyle(node,rule.styleType,rule.style)}})
-    }
+  getRuleDataByName(ruleName){
+    var ruleData = null;
+    this.rules.forEach((_ruleData)=>{
+      if (_ruleData.title==ruleName){ruleData=_ruleData}
+    })
+    return ruleData
+  }
+  setRuleData(ruleData){
+    this.rules.forEach((rule)=>{
+      if (rule.tile==ruleData.title){rule=ruleData}
+    })
+    this.refreshStyleRules();
+  }
+  processRule(rule) {
+      switch (rule.ruleType) {
+        case "preconnect":
+          this.getAllPreconnects(this.getNodeById(rule.target)).forEach((preconnect) => {
+            this.setNodeStyle(preconnect, rule.styleType, rule.style,rule.hidden);
+          });
+        case "tag":
+          this.nodes.forEach((node) => { if (node.nodeData.tags.includes(rule.target)) { this.setNodeStyle(node, rule.styleType, rule.style) } })
+      }
   }
 }
 
-class RuleMenu{
-  constructor(){
-    this.ruleBox = document.getElementById("ruleBox");
+class RuleMenu {
+  constructor() {
+    this.ruleList = document.getElementById("ruleList");
+    this.menuRuleList = document.getElementById("menuRuleList");
     this.element = document.getElementById("ruleMenu");
-    this.ruleBox.children[0].addEventListener("click",this.openMenu);
-    this.rules =[];
+    this.ruleList.children[0].addEventListener("click", this.openMenu);
+    this.rules = [];
   }
-  openMenu = e =>{
-    this.element.style.display='block';
+  openMenu = e => {
+    this.clearAllRules();
+    this.element.style.display = 'block';
+    nodeBox.rules.forEach((rule) => { this.createNewStyleRule(rule) })
+  }
+  closeMenu() {
+    [...this.menuRuleList.children].forEach((ruleElement) => { this.ruleList.appendChild(ruleElement) });
+    this.element.style.display = 'none';
+  }
+  clearAllRules() {
+    [...this.ruleList.children].slice(1).forEach((ruleElement) => { ruleElement.remove() });
+    [...this.menuRuleList.children].forEach((ruleElement) => { ruleElement.remove() })
+  }
+  createNewStyleRule(rule) {
+    const newStyleRule = document.createElement("div");
+    newStyleRule.classList.add("styleRule");
+    newStyleRule.appendChild(document.createElement("p"));
+    newStyleRule.appendChild(document.createElement("p"));
+    newStyleRule.appendChild(document.createElement("p"));
+    newStyleRule.children[0].innerHTML = rule.title;
+    newStyleRule.children[1].innerHTML = "S/H";
+    newStyleRule.children[1].addEventListener("click", this.toggleRule);
+    newStyleRule.children[2].innerHTML = "Del";
+    this.menuRuleList.appendChild(newStyleRule);
+  }
+  toggleRule = e => {
+    const ruleName = e.target.parentElement.children[0].innerHTML;
+    let ruleData = nodeBox.getRuleDataByName(ruleName);
+    ruleData.hidden = !ruleData.hidden;
+    nodeBox.setRuleData(ruleData);
   }
 }
 
 class InputMenu {
   constructor(element) {
     this.element = element;
-    this.height = window.innerHeight*.3;
-    this.width = window.innerWidth*.3;
+    this.height = window.innerHeight * .3;
+    this.width = window.innerWidth * .3;
     this.element.style.display = "none";
     this.fields = {
       'id': document.getElementById("idInputField"),
@@ -587,6 +644,7 @@ class InputMenu {
     if (nodeBox.validateNodeData(newMenuData)) {
       this.setNodeData(newMenuData);
       this.element.style.display = "none";
+      nodeBox.refreshStyleRules();
     }
   }
   handleTagInput = e => {
@@ -626,7 +684,7 @@ class InputMenu {
     newTag.children[0].innerHTML = tagText;
     newTag.children[1].setAttribute("src", "x.png")
     newTag.children[1].addEventListener("click", () => { this.deleteTag(newTag) });
-    this,this.tagBox.appendChild(newTag);
+    this, this.tagBox.appendChild(newTag);
   }
   createNewConnectionTag(cid) {
     const newConnectionTag = document.createElement("p");
@@ -643,10 +701,10 @@ class InputMenu {
     })
   }
   populate(nodeData) {
-    this.left = (nodeData.x+nodeBox.pan[0]) * nodeBox.scaleFactor + 50;
-    this.top = (nodeData.y+nodeBox.pan[1]) * nodeBox.scaleFactor - 250;
-    this.element.style.left = `${Math.min(Math.max(0,this.left),window.innerWidth-this.width)}px`;
-    this.element.style.top = `${Math.min(Math.max(0,this.top),window.innerHeight-this.height)}px`;
+    this.left = (nodeData.x + nodeBox.pan[0]) * nodeBox.scaleFactor + 50;
+    this.top = (nodeData.y + nodeBox.pan[1]) * nodeBox.scaleFactor - 250;
+    this.element.style.left = `${Math.min(Math.max(0, this.left), window.innerWidth - this.width)}px`;
+    this.element.style.top = `${Math.min(Math.max(0, this.top), window.innerHeight - this.height)}px`;
     [...this.tagBox.children].forEach((tag) => tag.remove());
     [...this.fields.connections.children].forEach((connection) => connection.remove());
     this.fields['id'].innerHTML = nodeData['id'];
@@ -661,13 +719,13 @@ class InputMenu {
   getTagTexts() {
     return [...this.tagBox.children].map((tag) => tag.children[0].innerHTML)
   }
-  refreshTagOptions(){
+  refreshTagOptions() {
     //clear all tag options
-    [...this.tagOptions.children].forEach((child)=>{child.remove()})
-    const allTags =[...new Set([].concat(...nodeBox.nodes.map((node)=>node.nodeData.tags)))]
-    allTags.forEach((tagText)=>{
+    [...this.tagOptions.children].forEach((child) => { child.remove() })
+    const allTags = [...new Set([].concat(...nodeBox.nodes.map((node) => node.nodeData.tags)))]
+    allTags.forEach((tagText) => {
       const newTagOption = document.createElement("option");
-      newTagOption.value=tagText;
+      newTagOption.value = tagText;
       this.tagOptions.appendChild(newTagOption);
     })
   }
@@ -709,10 +767,10 @@ document.getElementById("importButton").addEventListener("click", () => { docume
 document.getElementById("fileInput").addEventListener("change", nodeBox.loadFromFile)
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", nodeBox.removeAllNodes)
-document.getElementById("gridSnapButton").addEventListener("click", (e)=>{e.target.innerHTML = (nodeBox.snapNodes?"No Snap":"Snap");nodeBox.snapNodes = !nodeBox.snapNodes})
+document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
 
 
-document.addEventListener("click", (e) => { rcMenu.close()})
+document.addEventListener("click", (e) => { rcMenu.close() })
 document.addEventListener("keypress", (e) => {
   if (e.key === 'Enter') {
     if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() }
@@ -721,7 +779,8 @@ document.addEventListener("keypress", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === 'Escape') {
     if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.element.style.display = 'none' };
-    if (nodeBox.selectedNodes.length > 0) { nodeBox.clearSelectedNodes() }
+    if (nodeBox.selectedNodes.length > 0) { nodeBox.clearSelectedNodes() };
+    if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() };
   }
   else if (e.key == 's' && e.ctrlKey) {
     nodeBox.saveNodeData();
