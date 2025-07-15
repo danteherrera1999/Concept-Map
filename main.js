@@ -456,6 +456,17 @@ class NodeBox {
     this.pan = newSessionData.settings.pan;
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
+    this.rules = [{
+      "styleType":'backgroundColor',
+      "style": 'red',
+      "ruleType":'preconnect',
+      "target":8,
+    },{
+      "styleType":'border',
+      "style": 'blue',
+      "ruleType":'tag',
+      "target":'my tag',
+    }];
     document.getElementById("gridSnapButton").innerHTML= this.snapNodes?"Snap":"No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
@@ -468,6 +479,7 @@ class NodeBox {
         this.addEdge(lid, node.id, false);
       })
     })
+    this.rules.forEach((rule)=>{this.processRule(rule)})
     this.setPan(this.pan,true)
   }
   exportNodeData = e => {
@@ -523,18 +535,6 @@ class NodeBox {
 
   }
   processRule(rule){
-    rule = {
-      "styleType":'backgroundColor',
-      "style": 'red',
-      "ruleType":'preconnect',
-      "target":8,
-    };
-    rule = {
-      "styleType":'border',
-      "style": 'blue',
-      "ruleType":'tag',
-      "target":'my tag',
-    };
     console.log(rule);
     switch (rule.ruleType){
       case "preconnect":
@@ -573,7 +573,8 @@ class InputMenu {
       'connections': document.getElementById("connectionsInputField"),
     }
     this.fields['tags'].children[0].addEventListener("keydown", this.handleTagInput)
-    this.tagBox = document.getElementById("tagBox")
+    this.tagBox = document.getElementById("tagBox");
+    this.tagOptions = document.getElementById("tagOptions");
     this.left = 0;
     this.top = 0;
     this.moveOrigin = [0, 0];
@@ -625,7 +626,7 @@ class InputMenu {
     newTag.children[0].innerHTML = tagText;
     newTag.children[1].setAttribute("src", "x.png")
     newTag.children[1].addEventListener("click", () => { this.deleteTag(newTag) });
-    this.fields["tags"].children[1].appendChild(newTag);
+    this,this.tagBox.appendChild(newTag);
   }
   createNewConnectionTag(cid) {
     const newConnectionTag = document.createElement("p");
@@ -652,12 +653,23 @@ class InputMenu {
     this.setLayeredInputValue(this.fields['name'], nodeData['name'])
     this.setLayeredInputValue(this.fields['description'], nodeData['description'])
     this.fields['tags'].children[0].value = '';
+    this.refreshTagOptions();
     this.element.style.display = "block";
     nodeData['tags'].forEach((tagText) => this.createNewTag(tagText));
     nodeData['connections'].forEach((cid) => this.createNewConnectionTag(cid));
   }
   getTagTexts() {
     return [...this.tagBox.children].map((tag) => tag.children[0].innerHTML)
+  }
+  refreshTagOptions(){
+    //clear all tag options
+    [...this.tagOptions.children].forEach((child)=>{child.remove()})
+    const allTags =[...new Set([].concat(...nodeBox.nodes.map((node)=>node.nodeData.tags)))]
+    allTags.forEach((tagText)=>{
+      const newTagOption = document.createElement("option");
+      newTagOption.value=tagText;
+      this.tagOptions.appendChild(newTagOption);
+    })
   }
   getMenuData() {
     const tempNodeData = nodeBox.getNodeById(this.fields['id'].innerHTML).nodeData;
@@ -727,5 +739,4 @@ if (localStorage.getItem('sessionData') != null) {
   nodeBox.loadAllData(localStorage.getItem('sessionData'));
 }
 
-nodeBox.processRule(null);
-document.addEventListener("click",(e)=>{console.log(e.target)})
+// document.addEventListener("click",(e)=>{console.log(e.target)})
