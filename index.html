@@ -29,7 +29,21 @@
     <div id="ruleMenu">
         <div id="ruleMenuTitleDiv"><h1>Edit Style Rules</h1></div>
         <div id="menuRuleList"></div>
-        <div id="ruleEditInput"></div>
+        <div id="ruleEditInput">
+            <input id="ruleTitleInput" type="text"/>
+            <select id="ruleStyleTypeInput">
+                <option value="backgroundColor">Background Color</option>
+                <option value="border">Border Color</option>
+            </select>
+            <input id="ruleStyleInput" type="color"/>
+            <select id="ruleTypeInput">
+                <option value="preconnect">Children</option>
+                <option value="tag">Tag</option>
+            </select>
+            <input id="ruleTargetInput" list="ruleTargetOptions"/>
+        </div>
+        <button id="saveRuleButton">Save</button>
+        <datalist id="ruleTargetOptions"></datalist>
         <div id="exampleDisplay"></div>
         <div id="affectedNodesList"></div>
     </div>

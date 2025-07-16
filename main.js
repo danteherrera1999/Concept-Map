@@ -1,6 +1,7 @@
 /*
 Features to implement:
 
+Delete sekected nodes
 style filters
 "find node" option in rcm
 style page
@@ -386,6 +387,7 @@ class NodeBox {
     return newNode;
   }
   getNodeById = (nid) => this.nodes.filter((node) => node.id == nid)[0];
+  getNodeByName = (name) => this.nodes.filter((node) => node.nodeData.name == name)[0];
   addEdge(lid, hid, addEdgeToNode = true) {
     if (!addEdgeToNode || !(nodeBox.getNodeById(hid).nodeData.connections.includes(lid))) {
       const p1 = this.getNodeById(lid).getEboxPosition("top");
@@ -446,7 +448,8 @@ class NodeBox {
         'mapName': this.mapNameInput.value,
         'scaleFactor': this.scaleFactor,
         'pan': this.pan,
-        'gridSnap': this.snapNodes
+        'gridSnap': this.snapNodes,
+        'rules':this.rules,
       },
       'allNodeData': this.nodes.map((node) => node.nodeData)
     };
@@ -459,21 +462,22 @@ class NodeBox {
     this.pan = newSessionData.settings.pan;
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
-    this.rules = [{
-      "title": "rule 1",
-      "hidden": false,
-      "styleType": 'backgroundColor',
-      "style": 'red',
-      "ruleType": 'preconnect',
-      "target": 0,
-    }, {
-      "title": "rule 2",
-      "hidden": false,
-      "styleType": 'border',
-      "style": 'blue',
-      "ruleType": 'tag',
-      "target": 'my tag',
-    }];
+    this.rules=newSessionData.settings.rules;
+    // this.rules = [{
+    //   "title": "rule 1",
+    //   "hidden": false,
+    //   "styleType": 'backgroundColor',
+    //   "style": 'red',
+    //   "ruleType": 'preconnect',
+    //   "target": 0,
+    // }, {
+    //   "title": "rule 2",
+    //   "hidden": false,
+    //   "styleType": 'border',
+    //   "style": 'blue',
+    //   "ruleType": 'tag',
+    //   "target": 'my tag',
+    // }];
     document.getElementById("gridSnapButton").innerHTML = this.snapNodes ? "Snap" : "No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
@@ -545,9 +549,12 @@ class NodeBox {
         break;
     }
   }
+  getAllTags(){
+    return [...new Set([].concat(...this.nodes.map((node) => node.nodeData.tags)))]
+  }
   getAllPreconnects(targetNode) {
     const preconnects = targetNode.nodeData.connections.map((nodeId) => this.getNodeById(nodeId));
-    return preconnects.concat(...preconnects.map((preconnect) => this.getAllPreconnects(preconnect)));
+    return preconnects.concat([targetNode],...preconnects.map((preconnect) => this.getAllPreconnects(preconnect)));
 
   }
   getRuleDataByName(ruleName){
@@ -557,10 +564,12 @@ class NodeBox {
     })
     return ruleData
   }
-  setRuleData(ruleData){
-    this.rules.forEach((rule)=>{
-      if (rule.tile==ruleData.title){rule=ruleData}
-    })
+  setRuleDataByTitle(title,ruleData){
+    for (let i=0;i<nodeBox.rules.length;i++){
+      if (nodeBox.rules[i].title==title){
+        nodeBox.rules[i]=ruleData;
+      }
+    }
     this.refreshStyleRules();
   }
   processRule(rule) {
@@ -569,8 +578,10 @@ class NodeBox {
           this.getAllPreconnects(this.getNodeById(rule.target)).forEach((preconnect) => {
             this.setNodeStyle(preconnect, rule.styleType, rule.style,rule.hidden);
           });
+          break;
         case "tag":
-          this.nodes.forEach((node) => { if (node.nodeData.tags.includes(rule.target)) { this.setNodeStyle(node, rule.styleType, rule.style) } })
+          this.nodes.forEach((node) => { if (node.nodeData.tags.includes(rule.target)) { this.setNodeStyle(node, rule.styleType, rule.style) } });
+          break;
       }
   }
 }
@@ -582,6 +593,16 @@ class RuleMenu {
     this.element = document.getElementById("ruleMenu");
     this.ruleList.children[0].addEventListener("click", this.openMenu);
     this.rules = [];
+    this.fields = {
+      "ruleTitleInput":document.getElementById("ruleTitleInput"),
+      "ruleStyleTypeInput":document.getElementById("ruleStyleTypeInput"),
+      "ruleStyleInput":document.getElementById("ruleStyleInput"),
+      "ruleTypeInput":document.getElementById("ruleTypeInput"),
+      "ruleTargetInput":document.getElementById("ruleTargetInput"),
+      "ruleTargetOptions":document.getElementById("ruleTargetOptions"),
+    }
+    this.fields["ruleTypeInput"].addEventListener("change",()=>{this.updateRuleTargetOptions()});
+    document.getElementById("saveRuleButton").addEventListener("click",this.handleRuleSave)
   }
   openMenu = e => {
     this.clearAllRules();
@@ -591,6 +612,50 @@ class RuleMenu {
   closeMenu() {
     [...this.menuRuleList.children].forEach((ruleElement) => { this.ruleList.appendChild(ruleElement) });
     this.element.style.display = 'none';
+  }
+  updateRuleTargetOptions(){
+    this.fields["ruleTargetInput"].value='';
+    [...this.fields["ruleTargetOptions"].children].forEach((child)=>{child.remove()})
+    switch (this.fields["ruleTypeInput"].value){
+      case "preconnect":
+        nodeBox.nodes.forEach((node)=>{
+          const newOption = document.createElement("option");
+          newOption.value = node.nodeData.name;
+          this.fields["ruleTargetOptions"].appendChild(newOption);
+        });
+        break;
+        case "tag":
+          nodeBox.getAllTags().forEach((tagText)=>{
+            const newOption = document.createElement("option");
+            newOption.value = tagText;
+            this.fields["ruleTargetOptions"].appendChild(newOption);
+          })
+    }
+  }
+  packageRuleData(){
+    var targetData = null;
+    switch (this.fields['ruleTypeInput'].value){
+      case "preconnect":
+        targetData = nodeBox.getNodeByName(this.fields['ruleTargetInput'].value).nodeData.id;
+        break;
+      case "tag":
+        targetData = this.fields['ruleTargetInput'].value;
+        break;
+    }
+    return {
+      "title": this.fields['ruleTitleInput'].value,
+      "hidden": nodeBox.getRuleDataByName(this.currentRule).hidden,
+      "styleType": this.fields['ruleStyleTypeInput'].value,
+      "style": this.fields['ruleStyleInput'].value,
+      "ruleType": this.fields['ruleTypeInput'].value,
+      "target": targetData,
+    }
+  }
+  handleRuleSave=e=>{
+    console.log(this.packageRuleData())
+    if (this.currentRule!=null){
+      nodeBox.setRuleDataByTitle(this.currentRule,this.packageRuleData());
+    }
   }
   clearAllRules() {
     [...this.ruleList.children].slice(1).forEach((ruleElement) => { ruleElement.remove() });
@@ -603,16 +668,39 @@ class RuleMenu {
     newStyleRule.appendChild(document.createElement("p"));
     newStyleRule.appendChild(document.createElement("p"));
     newStyleRule.children[0].innerHTML = rule.title;
+    newStyleRule.children[0].addEventListener("click",this.handleStyleRuleClick)
     newStyleRule.children[1].innerHTML = "S/H";
     newStyleRule.children[1].addEventListener("click", this.toggleRule);
     newStyleRule.children[2].innerHTML = "Del";
     this.menuRuleList.appendChild(newStyleRule);
   }
+  handleStyleRuleClick = e =>{
+    const ruleTitle = e.target.innerHTML;
+    this.loadStyleRuleDataIntoMenu(nodeBox.getRuleDataByName(ruleTitle));
+    this.openMenu();
+  }
+  loadStyleRuleDataIntoMenu(ruleData){
+    this.currentRule = ruleData.title;
+    this.fields["ruleTitleInput"].value=ruleData.title;
+    this.fields["ruleStyleTypeInput"].value=ruleData.styleType;
+    this.fields["ruleStyleInput"].value=ruleData.style;
+    this.updateRuleTargetOptions();
+    this.fields["ruleTypeInput"].value=ruleData.ruleType;
+    switch (ruleData.ruleType){
+      case "preconnect":
+        this.fields["ruleTargetInput"].value = nodeBox.getNodeById(ruleData.target).nodeData.name;
+        break;
+      case "tag":
+        this.fields["ruleTargetInput"].value=ruleData.target;
+        break;
+    }
+
+  }
   toggleRule = e => {
     const ruleName = e.target.parentElement.children[0].innerHTML;
     let ruleData = nodeBox.getRuleDataByName(ruleName);
     ruleData.hidden = !ruleData.hidden;
-    nodeBox.setRuleData(ruleData);
+    nodeBox.setRuleDataByTitle(ruleData.title,ruleData);
   }
 }
 
@@ -722,8 +810,7 @@ class InputMenu {
   refreshTagOptions() {
     //clear all tag options
     [...this.tagOptions.children].forEach((child) => { child.remove() })
-    const allTags = [...new Set([].concat(...nodeBox.nodes.map((node) => node.nodeData.tags)))]
-    allTags.forEach((tagText) => {
+    nodeBox.getAllTags().forEach((tagText) => {
       const newTagOption = document.createElement("option");
       newTagOption.value = tagText;
       this.tagOptions.appendChild(newTagOption);

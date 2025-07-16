@@ -350,6 +350,21 @@ p{
     top:0;
     height: 40%;
     width: 80%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+}
+#ruleEditInput > input{
+    width: 15%;
+    height: 20%;
+}
+#saveRuleButton{
+    width:20%;
+    height: 10%;
+    right:0;
+    top:30%;
+    position: absolute;
 }
 #exampleDisplay{
     bottom:0;
