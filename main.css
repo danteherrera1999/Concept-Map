@@ -366,6 +366,13 @@ p{
     top:30%;
     position: absolute;
 }
+#newRuleButton{
+    width:20%;
+    height: 10%;
+    right:20%;
+    top:30%;
+    position: absolute;
+}
 #exampleDisplay{
     bottom:0;
     left:20%;
