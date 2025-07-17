@@ -462,7 +462,7 @@ class NodeBox {
     this.pan = newSessionData.settings.pan;
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
-    this.rules=newSessionData.settings.rules;
+    this.rules = (newSessionData.settings.rules!=null)? newSessionData.settings.rules : [];
     // this.rules = [{
     //   "title": "rule 1",
     //   "hidden": false,
@@ -644,7 +644,7 @@ class RuleMenu {
     }
     return {
       "title": this.fields['ruleTitleInput'].value,
-      "hidden": nodeBox.getRuleDataByName(this.currentRule).hidden,
+      "hidden": (this.currentRule!=null)? nodeBox.getRuleDataByName(this.currentRule).hidden:false,
       "styleType": this.fields['ruleStyleTypeInput'].value,
       "style": this.fields['ruleStyleInput'].value,
       "ruleType": this.fields['ruleTypeInput'].value,
@@ -655,6 +655,9 @@ class RuleMenu {
     console.log(this.packageRuleData())
     if (this.currentRule!=null){
       nodeBox.setRuleDataByTitle(this.currentRule,this.packageRuleData());
+    }
+    else{
+      nodeBox.rules.push(this.packageRuleData())
     }
   }
   clearAllRules() {
