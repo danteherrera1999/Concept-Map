@@ -1,12 +1,12 @@
 /*
 Features to implement:
 
-Delete sekected nodes
-style filters
-"find node" option in rcm
 style page
 add input box resizing
+"find node" option in rcm*
 grid system*
+Delete selected nodes*
+style filters*
 drag box relocating*
 MathJAX support*
 fix edge positions on zooming*
@@ -24,8 +24,18 @@ const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
 const defaultGridSize = 60.0;
 const defaultNodeSize = 60;
-const defaultNodeBackgroundColor = 'grey';
+const defaultNodeBackgroundColor = '#573434';
 const defaultNodeBorder= 'none';
+const emptyConfig = JSON.stringify({
+  'allNodeData':[],
+  'settings':{
+    'gridSnap':true,
+    'mapName':'',
+    'pan':[0,0],
+    'rules':[],
+    'scaleFactor':1,
+  }
+});
 
 class rightClickMenu {
   constructor(element) {
@@ -33,12 +43,24 @@ class rightClickMenu {
     this.x = 0;
     this.y = 0;
     this.targetNodeId = 0;
+    this.onNodeOnly=[1,2];
     this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x / nodeBox.scaleFactor - nodeBox.pan[0], this.y / nodeBox.scaleFactor - nodeBox.pan[1]) });
     this.element.children[1].addEventListener("click", () => { nodeBox.removeNodeById(this.targetNodeId) })
+    this.element.children[2].addEventListener("click",this.handleHighlightNode)
+    this.element.children[3].addEventListener("click",()=>{nodeBox.deleteSelectedNodes();this.close()})
+    this.nodeListSelect = document.getElementById("selectableNodes");
+    this.nodeListSelect.style.display='none';
+    this.element.children[4].addEventListener("click",this.handleFindNodeClick)
+  }
+  setControlVisibility(target=null){
+    for (let i=0;i<this.element.children.length;i++){
+      this.element.children[i].style.display= ((target=='node'&&this.onNodeOnly.includes(i)) || (target!='node'&&!this.onNodeOnly.includes(i)))?'block':'none';
+    }
+    this.element.children[3].style.display = (nodeBox.selectedNodes.length>0)? 'block':'none';
+    this.element.children[4].style.display = (nodeBox.nodes.length>0)?'block':'none';
   }
   open(e) {
-    this.element.children[0].style.display = "block";
-    this.element.children[1].style.display = "none";
+    this.setControlVisibility()
     this.element.setAttribute("style", `top: ${e.clientY}px; left: ${e.clientX}px;display:block;`);
     this.x = e.clientX;
     this.y = e.clientY;
@@ -46,15 +68,48 @@ class rightClickMenu {
   openOnNode(e, NodeId) {
     e.preventDefault();
     e.stopPropagation();
-    this.element.children[0].style.display = "none";
-    this.element.children[1].style.display = "block";
+    this.setControlVisibility("node")
     this.element.setAttribute("style", `top: ${e.clientY}px; left: ${e.clientX}px;display:block;`);
     this.x = e.clientX;
     this.y = e.clientY;
     this.targetNodeId = NodeId;
   }
+  handleHighlightNode=e=>{
+    nodeBox.setRuleData({
+      'id':null,
+      'hidden':false,
+      'ruleType':'preconnect',
+      'styleType':'backgroundColor',
+      'style':'#4da8ddff',
+      'target':this.targetNodeId,
+      'title':`Node ${this.targetNodeId} Connections`
+    })
+    nodeBox.refreshStyleRules();
+    ruleMenu.updateRuleElements();
+  }
+  openFindNode=e=>{
+    [...this.nodeListSelect.children].forEach((child)=>{child.remove()});
+    nodeBox.nodes.forEach((node)=>{
+      const newOption = document.createElement("option");
+      newOption.value = node.nodeData.id;
+      newOption.innerHTML = node.nodeData.name;
+      this.nodeListSelect.appendChild(newOption);
+    })
+    this.nodeListSelect.style.display = 'flex';
+  }
+  handleFindNodeClick=e=>{
+    e.stopPropagation();
+    console.log(this.nodeListSelect.style.display)
+    if (this.nodeListSelect.style.display=='none'){this.openFindNode()}
+    else{this.nodeListSelect.style.display='none'}
+    if (e.target.tagName=='OPTION'){
+      nodeBox.centerOnNode(parseInt(e.target.value));
+      this.close();
+    }
+  }
   close() {
-    this.element.style.display = "None";
+    this.element.style.display = "none";
+    this.nodeListSelect.style.display='none'
   }
 }
 
@@ -119,6 +174,7 @@ class Node {
     }
     this.element = document.createElement('div');
     this.element.classList.add("node");
+    this.element.id = `nodeElement_${this.id}`
     this.nameDisplay = document.createElement("p")
     this.nameDisplay.classList.add("nodeName")
     this.nameDisplay.innerHTML = `Node ${this.id}`
@@ -375,9 +431,12 @@ class NodeBox {
     this.refreshAllEdges();
   }
   removeNodeById(id) {
+    this.rules = this.rules.filter((rule)=>rule.ruleType!='preconnect' || rule.target!=id)
     this.removeEdgesById(id);
     this.nodes.forEach((node) => { if (node.id == id) { node.element.remove() } });
     this.nodes = this.nodes.filter((node) => node.id != id);
+    this.refreshStyleRules();
+    ruleMenu.updateRuleElements();
   }
   addNode(e, x, y, id = null) {
     var newNodeId = id;
@@ -406,6 +465,13 @@ class NodeBox {
     const p2 = this.getNodeById(edge.hid).getEboxPosition('bot');
     edge.edge.rebuildCurve(p1, p2);
   }
+  centerOnNode(nodeID){
+    this.clearSelectedNodes();
+    const node = this.getNodeById(nodeID)
+    this.selectedNodes = [node]
+    node.element.classList.add("selectedNode")
+    this.setPan([(window.innerWidth/this.scaleFactor/2)-node.nodeData.x,(window.innerHeight/this.scaleFactor/2)-node.nodeData.y])
+  }
   refreshAllNodes(update_scale = false) {
     this.nodes.forEach((node) => {
       node.setPosition(node.nodeData.x, node.nodeData.y, update_scale);
@@ -421,6 +487,12 @@ class NodeBox {
     this.nodes.forEach((node) => {
       nodeBox.removeNodeById(node.id);
     })
+  }
+  deleteSelectedNodes=e=>{
+    this.selectedNodes.forEach((node)=>{
+      this.removeNodeById(node.nodeData.id);
+    })
+    this.selectedNodes=[];
   }
 
   removeEdgeByPath(path) {
@@ -477,8 +549,7 @@ class NodeBox {
     });
     this.refreshStyleRules();
     this.setPan(this.pan, true);
-    ruleMenu.openMenu();
-    ruleMenu.closeMenu();
+    ruleMenu.updateRuleElements();
   }
   refreshStyleRules(){
     this.nodes.forEach((node)=>{
@@ -599,11 +670,18 @@ class RuleMenu {
     this.fields["ruleTypeInput"].addEventListener("change",()=>{this.updateRuleTargetOptions()});
     document.getElementById("saveRuleButton").addEventListener("click",this.handleRuleSave)
     document.getElementById("newRuleButton").addEventListener("click",this.handleNewRuleClick);
+    this.element.style.display='none';
+  }
+  updateRuleElements=e=>{
+    const menuIsClosed = this.element.style.display == 'none';
+    this.openMenu();
+    if (menuIsClosed){this.closeMenu()};
   }
   openMenu = e => {
     this.clearAllRules();
     this.element.style.display = 'block';
     nodeBox.rules.forEach((rule) => { this.createNewStyleRule(rule) })
+    this.updateRuleTargetOptions();
   }
   closeMenu() {
     [...this.menuRuleList.children].forEach((ruleElement) => { this.ruleList.appendChild(ruleElement) });
@@ -868,7 +946,7 @@ const ruleMenu = new RuleMenu();
 document.getElementById("importButton").addEventListener("click", () => { document.getElementById("fileInput").click() })
 document.getElementById("fileInput").addEventListener("change", nodeBox.loadFromFile)
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
-document.getElementById("deleteAllButton").addEventListener("click", nodeBox.removeAllNodes)
+document.getElementById("deleteAllButton").addEventListener("click", ()=>{nodeBox.loadAllData(emptyConfig)});
 document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
 
 
