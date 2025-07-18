@@ -559,7 +559,7 @@ class NodeBox {
       }
     }
     else{
-      ruleData.id=Math.max(...this.rules.map((rule)=>rule.id))+1
+      ruleData.id= this.rules.length>0? Math.max(...this.rules.map((rule)=>rule.id))+1:0;
       this.rules.push(ruleData);
       ruleMenu.createNewStyleRule(ruleData);
       console.log(this.rules)
@@ -586,6 +586,7 @@ class RuleMenu {
     this.menuRuleList = document.getElementById("menuRuleList");
     this.element = document.getElementById("ruleMenu");
     this.ruleList.children[0].addEventListener("click", this.openMenu);
+    this.currentRule=null;
     this.rules = [];
     this.fields = {
       "ruleTitleInput":document.getElementById("ruleTitleInput"),
