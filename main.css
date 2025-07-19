@@ -49,7 +49,7 @@
 }
 .node{
     position:absolute;
-    background-color: #573434;
+    background-color: #341f1f;
     z-index: 1;
     display: flex;
     align-items: center;
@@ -90,7 +90,7 @@
     background-color: transparent;
     border-radius: 10%;
     border: none;
-    width: min(15%,10px);
+    width: min(15%,10px) !important;
     height: min(15%,10px);
     cursor: nwse-resize;
     right:0;
@@ -134,7 +134,6 @@
     position:absolute;
     width: 100%;
     height: 100%;
-    
 }
 .edge{
     fill: black;
@@ -155,7 +154,7 @@
 }
 #nodeInputMenu{
     position: absolute;
-    background-color: grey;
+    background-color: #341f1f;
     border-radius: 2%;
     display: flex;
     flex-direction: column;
@@ -182,26 +181,31 @@
     overflow-x: hidden;
 }
 .tag{
-    height:3rem;
-    width: auto;
-    border: 1px solid red;
-    display: flex;
-    width: min-content;
+    background-color: white;
+    border-radius: 5px;
+    border-bottom-right-radius: 20px;
+    margin: 1px 1px;
+    height:2rem;
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
 }
 .tag > p {
-    margin:0 5px;
+    height: 2rem;
+    margin:1px;
+    height: fit-content;
+    overflow: hidden;
+    color:black;
+    font-style: eurostile;
     font-size: 2rem;
     left:0;
-    width: min-content;
+    width: fit-content;
     white-space: nowrap;
-    height: min-content;
 }
 .tag > img{
-    right:0;
-    height: 50%;
+    width: 1rem;
+    margin: 5px;
     aspect-ratio: 1;
-    margin: auto;
     opacity: .5;
 }
 .tag > img:hover{
@@ -221,16 +225,22 @@
     overflow-x: hidden;
 }
 .connectionTag{
-    border: 1px dashed red;
+    background-color: white;
+    color:black;
+    border-radius: 5px;
+    border-bottom-right-radius: 20px;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
     display: flex;
     font-size: 2rem;
     left:0;
     width: min-content;
-    margin:0;
+    margin: 2px;
     padding: 0 5px;
     white-space: nowrap;
     align-items: center;
-    height: 3rem;
+    height: 2rem;
 }
 
 p{
@@ -239,11 +249,12 @@ p{
 
 #sideMenu{
     z-index: 1000;
+    box-shadow: 5px 5px 5px grey;
     height:100vh;
-    width:100px;
+    width:10vw;
     position: fixed;
     margin: 0;
-    background-color: grey;
+    background-color: #341f1f;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -262,7 +273,7 @@ p{
     cursor: pointer;
 }
 #sideMenu > a:hover{
-    background-color: rgb(162, 160, 160);
+    background-color: #372929;
 }
 #sideMenu > a > h1{
     font-family: eurostile;
@@ -292,33 +303,36 @@ p{
 #mapNameInput{
     width:100vw;
     height:1em;
-    background-color: grey;
-    color: white;
+    background-color: transparent;
+    color: black;
     font-style: eurostile;
     position: fixed;
-    top:0;
+    top:5px;
     left:0;
     border: none;
     z-index: 999;
     text-align: center;
 }
 #mapNameInput::placeholder{
-    color: white;
+    color: black;
 }
 #ruleList{
     position: absolute;
     display: flex;
     width: 100%;
     height: 40%;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    background-color: wheat;
+    background-color: transparent;
+    border: 1px solid white;
+    border-radius: 10px;
+    overflow: hidden;
     bottom: 0;
     flex-direction: column;
 }
 #ruleList > a{
     width: 100%;
     height: 10%;
+    color:white;
+    text-align: center;
 }
 #ruleMenu{
     position: absolute;
@@ -326,13 +340,14 @@ p{
     height: 60%;
     top: 20%;
     left: 15%;
-    background-color: bisque;
+    background-color: #341f1f;
+    border: 1px solid white;
     z-index: 9999;
     display:none;
 }
 #ruleMenu > div{
     position: absolute;
-    border: 1px solid black;
+    border: 1px solid white;
     box-sizing: border-box;
 }
 #ruleMenuTitleDiv{
@@ -348,6 +363,7 @@ p{
     font-style: eurostile;
     width: fit-content;
     height: fit-content;
+    color: white;
 }
 #menuRuleList{
     width: 20%;
@@ -383,6 +399,13 @@ p{
     top:30%;
     position: absolute;
 }
+#deleteRuleButton{
+    width:20%;
+    height: 10%;
+    right:40%;
+    top:30%;
+    position: absolute;
+}
 #exampleDisplay{
     bottom:0;
     left:20%;
@@ -395,16 +418,34 @@ p{
     width: 20%;
     height: 60%;
 }
-.styleRule{
+.styleRuleContainer{
     width:100%;
     height:2rem;
-    display: grid;
-    grid-template-columns: 6fr 2fr 2fr;
+    background-color: green;
+    border-radius: 5px;
+    border-bottom-right-radius: 20px;
+    margin: 1px 0;
+}
+.styleRule{
+    width:100%;
+    height:100%;
+    display: flex;
+    justify-content: space-between;
     overflow: hidden;
+    align-items: center;
 }
 .styleRule > p{
-    border: 1px solid red;
     height: 2rem;
-    margin:0;
+    margin: 2px;
     cursor: pointer;
+    color: black;
+    height: fit-content;
+    overflow: hidden;
+}
+.styleRule > img{
+    width: 16%;
+    margin: 5px;
+    aspect-ratio: 1;
+    right:5px;
+    opacity: .7;
 }

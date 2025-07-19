@@ -2,7 +2,7 @@
 Features to implement:
 
 style page
-add input box resizing
+add input box resizing*
 "find node" option in rcm*
 grid system*
 Delete selected nodes*
@@ -14,7 +14,7 @@ add input field display and input layers*
 add node resizing*
 fix zooming breaking temp edge*
 latex rendering size bug on load.*
-find way to resize mathjax svg without typsetting again (very taxing  ) * 
+find way to resize mathjax svg without typsetting again (very taxing) * 
 */
 
 // final pixel position = (absolute position + pan ) * scalefactor 
@@ -80,7 +80,7 @@ class rightClickMenu {
       'hidden':false,
       'ruleType':'preconnect',
       'styleType':'backgroundColor',
-      'style':'#4da8ddff',
+      'style':'#4da8dd',
       'target':this.targetNodeId,
       'title':`Node ${this.targetNodeId} Connections`
     })
@@ -95,11 +95,11 @@ class rightClickMenu {
       newOption.innerHTML = node.nodeData.name;
       this.nodeListSelect.appendChild(newOption);
     })
+    MathJax.typeset(this.nodeListSelect.children)
     this.nodeListSelect.style.display = 'flex';
   }
   handleFindNodeClick=e=>{
     e.stopPropagation();
-    console.log(this.nodeListSelect.style.display)
     if (this.nodeListSelect.style.display=='none'){this.openFindNode()}
     else{this.nodeListSelect.style.display='none'}
     if (e.target.tagName=='OPTION'){
@@ -404,7 +404,7 @@ class NodeBox {
   setPan(newPan, update_scale = false) {
     this.pan = newPan;
     this.gridElement.style.left = `${(this.pan[0] % defaultGridSize) * this.scaleFactor}px`
-    this.gridElement.style.top = `${(this.pan[1] % defaultGridSize) * this.scaleFactor}px`
+    this.gridElement.style.top = `${(this.pan[1] % defaultGridSize  - defaultGridSize) * this.scaleFactor}px`
     this.gridElement.style.backgroundSize = `${defaultGridSize * this.scaleFactor}px ${defaultGridSize * this.scaleFactor}px`
     this.refreshAllNodes(update_scale);
   }
@@ -535,7 +535,7 @@ class NodeBox {
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
     this.rules = (newSessionData.settings.rules!=null)? newSessionData.settings.rules : [];
-    document.getElementById("gridSnapButton").innerHTML = this.snapNodes ? "Snap" : "No Snap";
+    document.getElementById("gridSnapButton").children[0].innerHTML = this.snapNodes ? "Snap" : "No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
     newSessionData.allNodeData.forEach((nodeData) => {
@@ -621,7 +621,6 @@ class NodeBox {
     return ruleData
   }
   setRuleData(ruleData){
-    console.log(ruleData)
     if (ruleData.id!=null){
       for (let i=0;i<nodeBox.rules.length;i++){
         if (nodeBox.rules[i].id==ruleData.id){
@@ -633,7 +632,6 @@ class NodeBox {
       ruleData.id= this.rules.length>0? Math.max(...this.rules.map((rule)=>rule.id))+1:0;
       this.rules.push(ruleData);
       ruleMenu.createNewStyleRule(ruleData);
-      console.log(this.rules)
     }
     this.refreshStyleRules();
   }
@@ -670,6 +668,7 @@ class RuleMenu {
     this.fields["ruleTypeInput"].addEventListener("change",()=>{this.updateRuleTargetOptions()});
     document.getElementById("saveRuleButton").addEventListener("click",this.handleRuleSave)
     document.getElementById("newRuleButton").addEventListener("click",this.handleNewRuleClick);
+    document.getElementById("deleteRuleButton").addEventListener("click",()=>{this.deleteCurrentRule()})
     this.element.style.display='none';
   }
   updateRuleElements=e=>{
@@ -728,8 +727,8 @@ class RuleMenu {
     }
   }
   handleRuleSave=e=>{
-    console.log(this.packageRuleData())
     nodeBox.setRuleData(this.packageRuleData());
+    this.updateRuleElements();
   }
   handleNewRuleClick=e=>{
     this.currentRule=null;
@@ -737,40 +736,38 @@ class RuleMenu {
     this.fields['ruleStyleTypeInput'].value='backgroundColor';
     this.fields['ruleStyleInput'].value='#000000';
     this.fields['ruleTypeInput'].value='tag';
-    this.fields['ruleTargetInput'].value='';
     this.updateRuleTargetOptions();
-    console.log(this.packageRuleData())
   }
   clearAllRules() {
     [...this.ruleList.children].slice(1).forEach((ruleElement) => { ruleElement.remove() });
     [...this.menuRuleList.children].forEach((ruleElement) => { ruleElement.remove() })
   }
   createNewStyleRule(rule) {
+    const newStyleRuleContainer = document.createElement("div");
+    newStyleRuleContainer.classList.add("styleRuleContainer");
+    newStyleRuleContainer.style.backgroundColor=rule.style;
     const newStyleRule = document.createElement("div");
     newStyleRule.classList.add("styleRule");
     newStyleRule.id= `styleRule_${rule.id}`
     newStyleRule.appendChild(document.createElement("p"));
-    newStyleRule.appendChild(document.createElement("p"));
-    newStyleRule.appendChild(document.createElement("p"));
+    newStyleRule.appendChild(document.createElement("img"));
     newStyleRule.children[0].innerHTML = rule.title;
     newStyleRule.children[0].addEventListener("click",this.handleStyleRuleClick)
-    newStyleRule.children[1].innerHTML = "S/H";
+    newStyleRule.children[1].setAttribute("src", (rule.hidden)? "novis.svg":"vis.svg");
     newStyleRule.children[1].addEventListener("click", this.toggleRule);
-    newStyleRule.children[2].innerHTML = "Del";
-    newStyleRule.children[2].addEventListener("click",this.handleDeleteRuleClick);
-    this.menuRuleList.appendChild(newStyleRule);
+    newStyleRuleContainer.appendChild(newStyleRule);
+    this.menuRuleList.appendChild(newStyleRuleContainer);
   }
   handleStyleRuleClick = e =>{
-    console.log(e.target.parentElement.id)
+    this.openMenu();
     const ruleID = parseInt(e.target.parentElement.id.substring(10));
     this.loadStyleRuleDataIntoMenu(nodeBox.getRuleDataByID(ruleID));
-    this.openMenu();
   }
-  handleDeleteRuleClick=e=>{
-    const ruleID = parseInt(e.target.parentElement.id.substring(10));
-    e.target.parentElement.remove();
-    nodeBox.rules = nodeBox.rules.filter((rule)=>rule.id!=ruleID);
+  deleteCurrentRule(){
+    nodeBox.rules = nodeBox.rules.filter((rule)=>rule.id!=this.currentRule);
     nodeBox.refreshStyleRules();
+    this.updateRuleElements();
+    this.currentRule=null;
   }
   loadStyleRuleDataIntoMenu(ruleData){
     this.currentRule = ruleData.id;
@@ -784,7 +781,7 @@ class RuleMenu {
         this.fields["ruleTargetInput"].value = nodeBox.getNodeById(ruleData.target).nodeData.name;
         break;
       case "tag":
-        this.fields["ruleTargetInput"].value=ruleData.target;
+        this.fields["ruleTargetInput"].value = ruleData.target;
         break;
     }
 
@@ -793,6 +790,7 @@ class RuleMenu {
     const ruleID = parseInt(e.target.parentElement.id.substring(10));
     let ruleData = nodeBox.getRuleDataByID(ruleID);
     ruleData.hidden = !ruleData.hidden;
+    e.target.setAttribute("src", (ruleData.hidden)? "novis.svg":"vis.svg")
     nodeBox.setRuleData(ruleData);
   }
 }
@@ -819,6 +817,13 @@ class InputMenu {
     this.element.addEventListener("mousedown", this.handleMouseDown)
     this.fields['name'].children[1].addEventListener("click", () => { this.handleLayeredInputClick(this.fields['name']) });
     this.fields['description'].children[1].addEventListener("click", () => { this.handleLayeredInputClick(this.fields['description']) });
+    this.resizeElement=document.getElementById("nodeInputResizeBox");
+    this.resizeElement.addEventListener("mousedown",(e)=>{
+      e.stopPropagation();
+      e.preventDefault();
+      document.addEventListener("mousemove",this.handleResize);
+      document.addEventListener("mouseup",()=>{document.removeEventListener("mousemove",this.handleResize)})
+    })
   }
   handleSubmit = e => {
     const newMenuData = this.getMenuData();
@@ -827,6 +832,13 @@ class InputMenu {
       this.element.style.display = "none";
       nodeBox.refreshStyleRules();
     }
+  }
+  handleResize=e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const box = this.element.getBoundingClientRect();
+    this.element.style.width = `max(30vw,${e.clientX-box.left}px)`;
+    this.element.style.height = `max(30vw,${e.clientY-box.top}px)`;
   }
   handleTagInput = e => {
     if (e.key === 'Enter') {
@@ -863,7 +875,7 @@ class InputMenu {
     newTag.appendChild(document.createElement("p"));
     newTag.appendChild(document.createElement("img"));
     newTag.children[0].innerHTML = tagText;
-    newTag.children[1].setAttribute("src", "x.png")
+    newTag.children[1].setAttribute("src", "x.svg")
     newTag.children[1].addEventListener("click", () => { this.deleteTag(newTag) });
     this, this.tagBox.appendChild(newTag);
   }
@@ -882,6 +894,8 @@ class InputMenu {
     })
   }
   populate(nodeData) {
+    this.element.style.width='30vw';
+    this.element.style.height='30vw';
     this.left = (nodeData.x + nodeBox.pan[0]) * nodeBox.scaleFactor + 50;
     this.top = (nodeData.y + nodeBox.pan[1]) * nodeBox.scaleFactor - 250;
     this.element.style.left = `${Math.min(Math.max(0, this.left), window.innerWidth - this.width)}px`;
@@ -947,10 +961,11 @@ document.getElementById("importButton").addEventListener("click", () => { docume
 document.getElementById("fileInput").addEventListener("change", nodeBox.loadFromFile)
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", ()=>{nodeBox.loadAllData(emptyConfig)});
-document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
+document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.children[0].innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
 
 
-document.addEventListener("click", (e) => { rcMenu.close() })
+document.addEventListener("click", (e) => { rcMenu.close()})
+nodeBox.element.addEventListener("click",()=>{if (ruleMenu.element.style.display=='block'){ruleMenu.closeMenu()}})
 document.addEventListener("keypress", (e) => {
   if (e.key === 'Enter') {
     if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() }
@@ -966,6 +981,9 @@ document.addEventListener("keydown", (e) => {
     nodeBox.saveNodeData();
     e.preventDefault();
   }
+  else if (e.key=='Delete'){
+    nodeBox.deleteSelectedNodes();
+  }
 })
 
 if (document.addEventListener) {
@@ -977,5 +995,5 @@ if (document.addEventListener) {
 if (localStorage.getItem('sessionData') != null) {
   nodeBox.loadAllData(localStorage.getItem('sessionData'));
 }
-
+// document.addEventListener("mousedown",(e)=>{e.preventDefault()})
 // document.addEventListener("click",(e)=>{console.log(e.target)})

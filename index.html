@@ -46,10 +46,11 @@
                 <option value="preconnect">Children</option>
                 <option value="tag">Tag</option>
             </select>
-            <input id="ruleTargetInput" list="ruleTargetOptions"/>
+            <input id="ruleTargetInput" list="ruleTargetOptions" type="text"/>
         </div>
         <button id="saveRuleButton">Save</button>
         <button id="newRuleButton">New Rule</button>
+        <button id="deleteRuleButton">Delete</button>
         <datalist id="ruleTargetOptions"></datalist>
         <div id="exampleDisplay"></div>
         <div id="affectedNodesList"></div>
@@ -105,6 +106,7 @@
                 <h2>Connected Nodes</h2>
                 <div id="connectionsInputField"></div>
             </div>
+            <div class="sizeControl" id="nodeInputResizeBox"></div>
         </div>
     </div>
     <div id="nodeBox">
