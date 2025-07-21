@@ -670,6 +670,7 @@ class RuleMenu {
     document.getElementById("newRuleButton").addEventListener("click",this.handleNewRuleClick);
     document.getElementById("deleteRuleButton").addEventListener("click",()=>{this.deleteCurrentRule()})
     this.element.style.display='none';
+    this.targetRule = null;
   }
   updateRuleElements=e=>{
     const menuIsClosed = this.element.style.display == 'none';
@@ -752,13 +753,25 @@ class RuleMenu {
     newStyleRule.appendChild(document.createElement("p"));
     newStyleRule.appendChild(document.createElement("img"));
     newStyleRule.children[0].innerHTML = rule.title;
-    newStyleRule.children[0].addEventListener("click",this.handleStyleRuleClick)
+    newStyleRule.children[0].addEventListener("mousedown",this.handleStyleRuleMousedown)
     newStyleRule.children[1].setAttribute("src", (rule.hidden)? "novis.svg":"vis.svg");
     newStyleRule.children[1].addEventListener("click", this.toggleRule);
     newStyleRuleContainer.appendChild(newStyleRule);
     this.menuRuleList.appendChild(newStyleRuleContainer);
   }
-  handleStyleRuleClick = e =>{
+  handleStyleRuleMousedown=e=>{
+    e.stopPropagation();
+    e.preventDefault();
+    this.targetRule = e.target.parentElement.parentElement
+    document.addEventListener("mousemove",this.handleStyleMousemove)
+    document.addEventListener("mouseup",()=>{this.handleStyleRuleMouseup();document.removeEventListener("mousemove",this.handleStyleMousemove)},{once:true})
+  }
+  handleStyleMousemove=e=>{
+    this.targetRule.style.position ='absolute';
+    this.targetRule.style.left = `${e.clientX}px`;
+    this.targetRule.style.top = `${e.clientY}px`;
+  }
+  handleStyleRuleMouseup = e =>{
     this.openMenu();
     const ruleID = parseInt(e.target.parentElement.id.substring(10));
     this.loadStyleRuleDataIntoMenu(nodeBox.getRuleDataByID(ruleID));
