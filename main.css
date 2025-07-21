@@ -261,6 +261,7 @@ p{
     padding: 0;
     left: 0;
     top:0;
+    box-sizing: border-box;
     overflow: hidden;
 }
 #sideMenu > a{
@@ -448,4 +449,8 @@ p{
     aspect-ratio: 1;
     right:5px;
     opacity: .7;
+}
+.targetRule{
+    position: absolute;
+    z-index:9999;
 }
