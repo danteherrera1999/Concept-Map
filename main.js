@@ -535,7 +535,6 @@ class NodeBox {
     this.pan = newSessionData.settings.pan;
     this.mapNameInput.value = newSessionData.settings.mapName;
     this.snapNodes = newSessionData.settings.gridSnap;
-    this.rules = (newSessionData.settings.rules != null) ? newSessionData.settings.rules : [];
     document.getElementById("gridSnapButton").children[0].innerHTML = this.snapNodes ? "Snap" : "No Snap";
     console.log(newSessionData);
     this.removeAllNodes();
@@ -548,6 +547,7 @@ class NodeBox {
         this.addEdge(lid, node.id, false);
       })
     });
+    this.rules = (newSessionData.settings.rules != null) ? newSessionData.settings.rules : [];
     this.refreshStyleRules();
     this.setPan(this.pan, true);
     ruleMenu.updateRuleElements();
