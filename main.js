@@ -283,7 +283,7 @@ class Node {
   setScale(sf) {
     this.element.style.width = `${this.nodeData.width * sf}px`;
     this.element.style.height = `${this.nodeData.height * sf}px`;
-    this.nameDisplay.style.fontSize = `${16 * sf}px`;
+    this.nameDisplay.style.fontSize = `${12 * sf}px`;
     if (this.nameDisplay.children.length > 0) {
       this.nameDisplay.innerHTML = this.nodeData.name == '' ? `Node ${this.nodeData.id}` : this.nodeData.name; //I dont know why but this is required or mathjax will not update scale
       MathJax.typeset([this.nameDisplay]);
@@ -773,8 +773,8 @@ class RuleMenu {
   handleStyleMousemove = e => {
     this.openStyleMenu = false
     this.targetRule.classList.add("targetRule")
-    this.targetRule.style.left = `${e.clientX-this.ruleList.getBoundingClientRect().left}px`;
-    this.targetRule.style.top = `${e.clientY-this.ruleList.getBoundingClientRect().top}px`;
+    this.targetRule.style.left = `${e.clientX - this.ruleList.getBoundingClientRect().left}px`;
+    this.targetRule.style.top = `${e.clientY - this.ruleList.getBoundingClientRect().top}px`;
   }
   handleStyleRuleMouseup = e => {
     const ruleID = parseInt(this.targetRule.children[0].id.substring(10));
@@ -782,22 +782,22 @@ class RuleMenu {
       this.openMenu();
       this.loadStyleRuleDataIntoMenu(nodeBox.getRuleDataByID(ruleID));
     }
-    else{
-      if (e.target.parentElement.classList.contains("styleRule")){
+    else {
+      if (e.target.parentElement.classList.contains("styleRule")) {
         const eventRuleID = parseInt(e.target.parentElement.id.substring(10));
-        const targetRulePos = nodeBox.rules.map((rule)=>rule.id).indexOf(ruleID)
-        const eventRulePos = nodeBox.rules.map((rule)=>rule.id).indexOf(eventRuleID)
-        let newRuleList = nodeBox.rules.filter((rule)=>rule.id!=ruleID)
-        newRuleList.splice((targetRulePos<eventRulePos)?eventRulePos-1:eventRulePos,0,nodeBox.getRuleDataByID(ruleID));
-        nodeBox.rules=newRuleList;
+        const targetRulePos = nodeBox.rules.map((rule) => rule.id).indexOf(ruleID)
+        const eventRulePos = nodeBox.rules.map((rule) => rule.id).indexOf(eventRuleID)
+        let newRuleList = nodeBox.rules.filter((rule) => rule.id != ruleID)
+        newRuleList.splice((targetRulePos < eventRulePos) ? eventRulePos - 1 : eventRulePos, 0, nodeBox.getRuleDataByID(ruleID));
+        nodeBox.rules = newRuleList;
         nodeBox.refreshStyleRules();
         this.updateRuleElements();
       }
     }
-      this.targetRule.classList.remove('targetRule')
-    }
+    this.targetRule.classList.remove('targetRule')
+  }
 
-  
+
   deleteCurrentRule() {
     nodeBox.rules = nodeBox.rules.filter((rule) => rule.id != this.currentRule);
     nodeBox.refreshStyleRules();
@@ -876,7 +876,7 @@ class InputMenu {
     this.element.style.height = `max(30vw,${e.clientY - box.top}px)`;
   }
   handleTagInput = e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       const tagText = this.fields['tags'].children[0].value;
       if (tagText != '') {
         e.preventDefault();
@@ -1002,7 +1002,7 @@ document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.t
 document.addEventListener("click", (e) => { rcMenu.close() })
 nodeBox.element.addEventListener("click", () => { if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() } })
 document.addEventListener("keypress", (e) => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.shiftKey) {
     if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() }
   }
 })
@@ -1012,8 +1012,13 @@ document.addEventListener("keydown", (e) => {
     if (nodeBox.selectedNodes.length > 0) { nodeBox.clearSelectedNodes() };
     if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() };
   }
-  else if (e.key == 's' && e.ctrlKey) {
-    nodeBox.saveNodeData();
+  else if (e.ctrlKey) {
+    if (e.key=='S') {
+      nodeBox.exportNodeData(e)
+    }
+    else if (e.key=='s') {
+      nodeBox.saveNodeData()
+    }
     e.preventDefault();
   }
   else if (e.key == 'Delete') {

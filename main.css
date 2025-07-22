@@ -49,7 +49,8 @@
 }
 .node{
     position:absolute;
-    background-color: #341f1f;
+    /* background-color: #341f1f; */
+    background-color: #b1a0a0;
     z-index: 1;
     display: flex;
     align-items: center;
@@ -67,7 +68,7 @@
     margin: 0;
     width: fit-content;
     height: fit-content;
-    color: white;
+    color: black;
     font-family: eurostile;
     text-align: center;
     margin: auto;
