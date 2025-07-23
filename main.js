@@ -20,7 +20,7 @@ add style rule ordering*
 
 // final pixel position = (absolute position + pan ) * scalefactor 
 async function load_template(filename){
-  fetch(filename).then(response=>response.json()).then((data)=>{
+  fetch('./Examples/'+filename).then(response=>response.json()).then((data)=>{
     nodeBox.loadAllData(JSON.stringify(data));
   })
 }
@@ -779,8 +779,8 @@ class RuleMenu {
   handleStyleMousemove = e => {
     this.openStyleMenu = false
     this.targetRule.classList.add("targetRule")
-    this.targetRule.style.left = `${e.clientX - this.ruleList.getBoundingClientRect().left}px`;
-    this.targetRule.style.top = `${e.clientY - this.ruleList.getBoundingClientRect().top}px`;
+    this.targetRule.style.left = `${e.clientX - this.targetRule.parentElement.getBoundingClientRect().left}px`;
+    this.targetRule.style.top = `${e.clientY - this.targetRule.parentElement.getBoundingClientRect().top}px`;
   }
   handleStyleRuleMouseup = e => {
     const ruleID = parseInt(this.targetRule.children[0].id.substring(10));
@@ -1003,7 +1003,7 @@ document.getElementById("fileInput").addEventListener("change", nodeBox.loadFrom
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", () => { nodeBox.loadAllData(emptyConfig) });
 document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.children[0].innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
-
+document.getElementById("loadExampleButton").addEventListener("click",(e)=>{load_template(e.target.value)})
 
 document.addEventListener("click", (e) => { rcMenu.close() })
 nodeBox.element.addEventListener("click", () => { if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() } })
@@ -1019,9 +1019,6 @@ document.addEventListener("keydown", (e) => {
     if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() };
   }
   else if (e.ctrlKey) {
-    if (e.key=='e'){
-      load_template('./Proofs_2025_21_19_18.json');
-    }
     if (e.key=='S') {
       nodeBox.exportNodeData(e)
     }

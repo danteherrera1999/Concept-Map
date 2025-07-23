@@ -277,13 +277,40 @@ p{
 #sideMenu > a:hover{
     background-color: #372929;
 }
-#sideMenu > a > h1{
+#sideMenu > a > p{
     font-family: eurostile;
     font-size: 1em;
 }
 #importButton > input{
     display: none;
 }
+#loadExampleContainer{
+    width:100%;
+    height:5%;
+    justify-content: center;
+    display: flex;
+}
+.dropbtn {
+    color: white;
+    background-color: transparent;
+    cursor: pointer;
+    font-family: eurostile;
+    font-size: 1em;
+    justify-content: center;
+    align-items: center;
+    border: none;
+}
+.dropdown {
+  position: relative;
+}
+.dropdown-content {
+    position: absolute;
+    top:80%;
+    display: none;
+    color: white;
+    cursor: pointer;
+}
+.dropdown:hover .dropdown-content {display: block;}
 
 .layeredInput > p{
     width: 100%;

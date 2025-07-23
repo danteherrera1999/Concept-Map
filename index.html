@@ -58,17 +58,24 @@
     <input id="mapNameInput" placeholder="Map Name"/>
     <menu id="sideMenu">
         <a id="importButton"><input id="fileInput" type="file" />
-            <h1>Import</h1>
+            <p>Import</p>
         </a>
         <a id="exportButton">
-            <h1>Export</h1>
+            <p>Export</p>
         </a>
         <a id="deleteAllButton">
-            <h1>Clear</h1>
+            <p>Clear</p>
         </a>
         <a id="gridSnapButton">
-            <h1>No Snap</h1>
+            <p>No Snap</p>
         </a>
+        <div class="dropdown" id="loadExampleContainer">
+            <button class="dropbtn" >Load Example</button>
+            <div class="dropdown-content" id="loadExampleButton">
+                <option value="">Tutorial</option>
+                <option value="Proofs.json">Proofs</option>
+            </div>
+        </div>
         <div id="ruleList">
             <a>Style Rules</a>
         </div>
