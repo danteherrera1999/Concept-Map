@@ -19,6 +19,12 @@ add style rule ordering*
 */
 
 // final pixel position = (absolute position + pan ) * scalefactor 
+async function load_template(filename){
+  fetch(filename).then(response=>response.json()).then((data)=>{
+    nodeBox.loadAllData(JSON.stringify(data));
+  })
+}
+
 
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -1013,6 +1019,9 @@ document.addEventListener("keydown", (e) => {
     if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() };
   }
   else if (e.ctrlKey) {
+    if (e.key=='e'){
+      load_template('./Proofs_2025_21_19_18.json');
+    }
     if (e.key=='S') {
       nodeBox.exportNodeData(e)
     }
