@@ -31,7 +31,7 @@ const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
 const defaultGridSize = 60.0;
 const defaultNodeSize = 60;
-const defaultNodeBackgroundColor = '#573434';
+const defaultNodeBackgroundColor = '#b49bb0ff';
 const defaultNodeBorder = 'none';
 const emptyConfig = JSON.stringify({
   'allNodeData': [],
@@ -89,7 +89,7 @@ class rightClickMenu {
       'styleType': 'backgroundColor',
       'style': '#4da8dd',
       'target': this.targetNodeId,
-      'title': `Node ${this.targetNodeId} Connections`
+      'title': `${nodeBox.getNodeById(this.targetNodeId).nodeData.name} Connections`
     })
     nodeBox.refreshStyleRules();
     ruleMenu.updateRuleElements();
@@ -1021,11 +1021,12 @@ document.addEventListener("keydown", (e) => {
   else if (e.ctrlKey) {
     if (e.key=='S') {
       nodeBox.exportNodeData(e)
+      e.preventDefault()
     }
     else if (e.key=='s') {
       nodeBox.saveNodeData()
+      e.preventDefault()
     }
-    e.preventDefault();
   }
   else if (e.key == 'Delete') {
     nodeBox.deleteSelectedNodes();

@@ -472,7 +472,7 @@ p{
     overflow: hidden;
 }
 .styleRule > img{
-    width: 16%;
+    height:100%;
     margin: 5px;
     aspect-ratio: 1;
     right:5px;
