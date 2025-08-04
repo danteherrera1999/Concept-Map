@@ -16,22 +16,17 @@ fix zooming breaking temp edge*
 latex rendering size bug on load.*
 find way to resize mathjax svg without typsetting again (very taxing) * 
 add style rule ordering*
+Add tag to all selected*
+
 */
 
 // final pixel position = (absolute position + pan ) * scalefactor 
-async function load_template(filename){
-  fetch('./Examples/'+filename).then(response=>response.json()).then((data)=>{
-    nodeBox.loadAllData(JSON.stringify(data));
-  })
-}
-
-
 
 const svgNS = "http://www.w3.org/2000/svg";
 const defaultLineWidth = 5;
 const defaultGridSize = 60.0;
 const defaultNodeSize = 60;
-const defaultNodeBackgroundColor = '#b49bb0ff';
+const defaultNodeBackgroundColor = '#78aba7ff';
 const defaultNodeBorder = 'none';
 const emptyConfig = JSON.stringify({
   'allNodeData': [],
@@ -50,21 +45,35 @@ class rightClickMenu {
     this.x = 0;
     this.y = 0;
     this.targetNodeId = 0;
-    this.onNodeOnly = [1, 2];
-    this.element.children[0].addEventListener("click", (e) => { nodeBox.addNode(e, this.x / nodeBox.scaleFactor - nodeBox.pan[0], this.y / nodeBox.scaleFactor - nodeBox.pan[1]) });
-    this.element.children[1].addEventListener("click", () => { nodeBox.removeNodeById(this.targetNodeId) })
-    this.element.children[2].addEventListener("click", this.handleHighlightNode)
-    this.element.children[3].addEventListener("click", () => { nodeBox.deleteSelectedNodes(); this.close() })
+    this.onNodeOnly = ["deleteNode", "highlightNode"];
+    this.rcButtons = {
+      'newNode':document.getElementById("newNodeRCButton"),
+      'deleteNode':document.getElementById("deleteNodeRCButton"),
+      'highlightNode':document.getElementById("highlightNodeRCButton"),
+      'deleteSelected':document.getElementById("deleteSelectedRCButton"),
+      'findNode':document.getElementById("findNodeRCButton"),
+      'addTags':document.getElementById("addTagRCButton")
+    }
+    this.rcButtons['newNode'].addEventListener("click", (e) => { nodeBox.addNode(e, this.x / nodeBox.scaleFactor - nodeBox.pan[0], this.y / nodeBox.scaleFactor - nodeBox.pan[1]) });
+    this.rcButtons['deleteNode'].addEventListener("click", () => { nodeBox.removeNodeById(this.targetNodeId) })
+    this.rcButtons['highlightNode'].addEventListener("click", this.handleHighlightNode)
+    this.rcButtons['deleteSelected'].addEventListener("click", () => { nodeBox.deleteSelectedNodes(); this.close() })
+    this.rcButtons['findNode'].addEventListener("click", this.handleFindNodeClick)
+    this.rcButtons['addTags'].addEventListener("click", this.handleAddTagsClick)
+    
     this.nodeListSelect = document.getElementById("selectableNodes");
     this.nodeListSelect.style.display = 'none';
-    this.element.children[4].addEventListener("click", this.handleFindNodeClick)
+    this.addTagsSelect = document.getElementById("selectableTags");
+    this.addTagsSelect.style.display = 'none';
+    
   }
   setControlVisibility(target = null) {
-    for (let i = 0; i < this.element.children.length; i++) {
-      this.element.children[i].style.display = ((target == 'node' && this.onNodeOnly.includes(i)) || (target != 'node' && !this.onNodeOnly.includes(i))) ? 'block' : 'none';
-    }
-    this.element.children[3].style.display = (nodeBox.selectedNodes.length > 0) ? 'block' : 'none';
-    this.element.children[4].style.display = (nodeBox.nodes.length > 0) ? 'block' : 'none';
+    Object.entries(this.rcButtons).forEach(([key,element]) =>{
+      element.style.display = ((target == 'node' && this.onNodeOnly.includes(key)) || (target != 'node' && !this.onNodeOnly.includes(key))) ? 'block' : 'none';
+    })
+    this.rcButtons['deleteSelected'].style.display = (nodeBox.selectedNodes.length > 0) ? 'block' : 'none';
+    this.rcButtons['addTags'].style.display = (nodeBox.selectedNodes.length > 0) ? 'block' : 'none';
+    this.rcButtons['findNode'].style.display = (nodeBox.nodes.length > 0) ? 'block' : 'none';
   }
   open(e) {
     this.setControlVisibility()
@@ -105,12 +114,31 @@ class rightClickMenu {
     MathJax.typeset(this.nodeListSelect.children)
     this.nodeListSelect.style.display = 'flex';
   }
+  openAddTags = e => {
+    [...this.addTagsSelect.children].forEach((child) => { child.remove() });
+    nodeBox.getAllTags().forEach((tag) => {
+      const newOption = document.createElement("option");
+      newOption.value = tag;
+      newOption.innerHTML = tag;
+      this.addTagsSelect.appendChild(newOption);
+    })
+    this.addTagsSelect.style.display = 'flex';
+  }
   handleFindNodeClick = e => {
     e.stopPropagation();
     if (this.nodeListSelect.style.display == 'none') { this.openFindNode() }
     else { this.nodeListSelect.style.display = 'none' }
     if (e.target.tagName == 'OPTION') {
       nodeBox.centerOnNode(parseInt(e.target.value));
+      this.close();
+    }
+  }
+  handleAddTagsClick = e => {
+    e.stopPropagation();
+    if (this.addTagsSelect.style.display == 'none') { this.openAddTags() }
+    else { this.addTagsSelect.style.display = 'none' }
+    if (e.target.tagName == 'OPTION') {
+      nodeBox.addTagToSelected(e.target.value);
       this.close();
     }
   }
@@ -182,10 +210,19 @@ class Node {
     this.element = document.createElement('div');
     this.element.classList.add("node");
     this.element.id = `nodeElement_${this.id}`
-    this.nameDisplay = document.createElement("p")
+    const svgContainer = document.createElement("svg")
+    svgContainer.setAttribute("viewBox",`0 0 ${defaultNodeSize*nodeBox.scaleFactor} ${defaultNodeSize*nodeBox.scaleFactor}`)
+    svgContainer.classList.add("nodeNameContainer")
+    svgContainer.setAttribute("xmlns",svgNS)
+    this.nameDisplay = document.createElement("text")
     this.nameDisplay.classList.add("nodeName")
+    this.nameDisplay.setAttribute("preserveAspectRatio","none");
+    this.nameDisplay.setAttribute("font-size","10px")
+    this.nameDisplay.setAttribute("textLength",180) 
+    this.nameDisplay.setAttribute("lengthAdjust","spacingAndGlyphs")
     this.nameDisplay.innerHTML = `Node ${this.id}`
-    this.element.appendChild(this.nameDisplay)
+    svgContainer.appendChild(this.nameDisplay);
+    this.element.appendChild(svgContainer)
     this.element.addEventListener("mousedown", this.handleClick, false);
     nodeBox.element.appendChild(this.element);
     this.element.addEventListener("contextmenu", (e) => { rcMenu.openOnNode(e, this.id) })
@@ -236,6 +273,9 @@ class Node {
   handleClick = e => {
     if (e.button === 0) {
       this.openNodeMenu = true;
+      if (nodeInputMenu.element.style.display == 'block') {
+        nodeInputMenu.handleSubmit();
+      }
       if (this.element.classList.contains("selectedNode")) {
         nodeBox.panOriginX = e.clientX;
         nodeBox.panOriginY = e.clientY;
@@ -289,7 +329,8 @@ class Node {
   setScale(sf) {
     this.element.style.width = `${this.nodeData.width * sf}px`;
     this.element.style.height = `${this.nodeData.height * sf}px`;
-    this.nameDisplay.style.fontSize = `${12 * sf}px`;
+    // this.nameDisplay.style.fontSize = `${12 * sf}px`;
+    this.nameDisplay.parentElement.setAttribute("viewBox",`0 0 ${this.nodeData.width * sf} ${this.nodeData.height * sf}`)
     if (this.nameDisplay.children.length > 0) {
       this.nameDisplay.innerHTML = this.nodeData.name == '' ? `Node ${this.nodeData.id}` : this.nodeData.name; //I dont know why but this is required or mathjax will not update scale
       MathJax.typeset([this.nameDisplay]);
@@ -359,7 +400,7 @@ class NodeBox {
   handleClick = e => {
     if (e.button === 0) {
       if (nodeInputMenu.element.style.display == "block") {
-        nodeInputMenu.element.style.display = "none";
+        nodeInputMenu.handleSubmit();
       }
       this.panOrigin = [e.clientX, e.clientY];
       document.addEventListener("mousemove", this.handleLeftDrag);
@@ -388,14 +429,20 @@ class NodeBox {
     }
     else {
       //get all nodes in box;
-      this.clearSelectedNodes();
+      if (!e.ctrlKey) {
+        this.clearSelectedNodes()
+      };
       const xmin = Math.min(e.clientX, this.selectionOrigin[0]);
       const xmax = Math.max(e.clientX, this.selectionOrigin[0]);
       const ymin = Math.min(e.clientY, this.selectionOrigin[1]);
       const ymax = Math.max(e.clientY, this.selectionOrigin[1]);
-      this.selectedNodes = this.nodes.filter((node) =>
-        (node.nodeData.x + this.pan[0]) * this.scaleFactor > xmin && (node.nodeData.x + this.pan[0]) * this.scaleFactor <= xmax && (node.nodeData.y + this.pan[1]) * this.scaleFactor > ymin && (node.nodeData.y + this.pan[1]) * this.scaleFactor < ymax
+      this.nodes.forEach((node) => {
+        if ((node.nodeData.x + this.pan[0]) * this.scaleFactor > xmin && (node.nodeData.x + this.pan[0]) * this.scaleFactor <= xmax && (node.nodeData.y + this.pan[1]) * this.scaleFactor > ymin && (node.nodeData.y + this.pan[1]) * this.scaleFactor < ymax) {
+          this.selectedNodes.push(node);
+        }
+      }
       );
+      this.selectedNodes = [...new Set(this.selectedNodes)]
       this.selectedNodes.forEach((node) => { node.element.classList.add("selectedNode") })
     }
 
@@ -423,6 +470,16 @@ class NodeBox {
       const clickCoords = [e.clientX, e.clientY];
       this.setPan([0, 1].map((x) => this.pan[x] + clickCoords[x] * ((1 / this.scaleFactor) - (1 / oldSF))), true)
     }
+  }
+  addTagToSelected(tagText){
+    this.selectedNodes.forEach((node)=>{
+      if (!node.nodeData.tags.includes(tagText)){
+        let newNodeData = node.nodeData;
+        newNodeData.tags.push(tagText);
+        node.setNodeData(newNodeData);
+      }
+    })
+    this.refreshStyleRules();
   }
   handleLeftDrag = e => {
     this.setPan([(e.clientX - this.panOrigin[0]) / this.scaleFactor + this.pan[0], (e.clientY - this.panOrigin[1]) / this.scaleFactor + this.pan[1]]);
@@ -557,6 +614,11 @@ class NodeBox {
     this.refreshStyleRules();
     this.setPan(this.pan, true);
     ruleMenu.updateRuleElements();
+  }
+  async load_template(filename) {
+    fetch('./Examples/' + filename).then(response => response.json()).then((data) => {
+      this.loadAllData(JSON.stringify(data));
+    })
   }
   refreshStyleRules() {
     this.nodes.forEach((node) => {
@@ -802,8 +864,6 @@ class RuleMenu {
     }
     this.targetRule.classList.remove('targetRule')
   }
-
-
   deleteCurrentRule() {
     nodeBox.rules = nodeBox.rules.filter((rule) => rule.id != this.currentRule);
     nodeBox.refreshStyleRules();
@@ -863,7 +923,7 @@ class InputMenu {
       e.stopPropagation();
       e.preventDefault();
       document.addEventListener("mousemove", this.handleResize);
-      document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleResize) })
+      document.addEventListener("mouseup", () => { document.removeEventListener("mousemove", this.handleResize) }, { once: true })
     })
   }
   handleSubmit = e => {
@@ -1003,27 +1063,22 @@ document.getElementById("fileInput").addEventListener("change", nodeBox.loadFrom
 document.getElementById("exportButton").addEventListener("click", nodeBox.exportNodeData);
 document.getElementById("deleteAllButton").addEventListener("click", () => { nodeBox.loadAllData(emptyConfig) });
 document.getElementById("gridSnapButton").addEventListener("click", (e) => { e.target.children[0].innerHTML = (nodeBox.snapNodes ? "No Snap" : "Snap"); nodeBox.snapNodes = !nodeBox.snapNodes })
-document.getElementById("loadExampleButton").addEventListener("click",(e)=>{load_template(e.target.value)})
+document.getElementById("loadExampleButton").addEventListener("click", (e) => { nodeBox.load_template(e.target.value) })
 
 document.addEventListener("click", (e) => { rcMenu.close() })
 nodeBox.element.addEventListener("click", () => { if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() } })
-document.addEventListener("keypress", (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() }
-  }
-})
 document.addEventListener("keydown", (e) => {
   if (e.key === 'Escape') {
-    if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.element.style.display = 'none' };
+    if (nodeInputMenu.element.style.display == 'block') { nodeInputMenu.handleSubmit() };
     if (nodeBox.selectedNodes.length > 0) { nodeBox.clearSelectedNodes() };
     if (ruleMenu.element.style.display == 'block') { ruleMenu.closeMenu() };
   }
   else if (e.ctrlKey) {
-    if (e.key=='S') {
+    if (e.key == 'S') {
       nodeBox.exportNodeData(e)
       e.preventDefault()
     }
-    else if (e.key=='s') {
+    else if (e.key == 's') {
       nodeBox.saveNodeData()
       e.preventDefault()
     }
@@ -1041,6 +1096,9 @@ if (document.addEventListener) {
 
 if (localStorage.getItem('sessionData') != null) {
   nodeBox.loadAllData(localStorage.getItem('sessionData'));
+}
+else {
+  nodeBox.load_template('Proofs.json')
 }
 // document.addEventListener("mousedown",(e)=>{e.preventDefault()})
 // document.addEventListener("click",(e)=>{console.log(e.target)})
